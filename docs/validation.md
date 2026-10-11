@@ -62,7 +62,23 @@ PowerShell 7.6.6 was downloaded only into a temporary test directory from the of
 
 The first [GitHub validation run](https://github.com/wrvines/command-center-tui/actions/runs/38170927586) passed for implementation commit `0d91c8123e258b1af107e56b23b94cdd88742022`: macOS and Ubuntu installed the core tools, passed configuration/behavior validation, and passed the real PTY smoke test. The Windows runner passed actual PowerShell parsing and the simulated WSL bridge checks. A full installation into a real WSL distro and native Ghostty window rendering remain manual checks. The subsequent documentation-only commit records these results without repeating CI.
 
-## Reproduce
+## Small-screen and current-pane update
+
+On October 11, 2026, plain `newsboat` reproduced the missing-default-URL error, while the configured panel successfully read the three command-center feeds. The new `command-center run newsboat` uses that same scoped configuration/cache in the current terminal. A later check encountered the user's active Newsboat cache lock; the instance was left running. Concurrent readers of that database are not supported.
+
+The compact btop profile is separate from existing full-view preferences. Native terminal checks passed for CPU at 60×8, memory/disks at 60×10, network at 60×6, and processes at 60×16. Newsboat's current-terminal runner loaded a disposable local feed at 40×10. All checks used private temporary state, with no AI requests or changes to the user's article read-state.
+
+Both platform configurations, all six layouts, shell/Python syntax, and 19 behavior tests passed. The real-session smoke check passed again, including the new compact SYSTEM monitor above two lower shell panes at 100×30, layout export, attachment, and resurrection. Full-view btop still has its native minimum-size constraints; changing graphs does not remove those constraints. Existing saved sessions retain their layout; adding a new SYSTEM workspace applies the revised template.
+
+The new compact profile was seeded into the original Mac's private preferences without replacing `btop.conf`, feeds, or existing configuration. README and agent guidance document the configured current-pane launch, compact presets, and cache-lock behavior. Native Ghostty visual inspection remains untested.
+
+## Reproduce small-screen checks
+
+```sh
+python3 -u -B scripts/small-screen-smoke.py
+```
+
+## Reproduce full validation
 
 ```sh
 scripts/validate.sh

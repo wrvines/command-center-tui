@@ -53,6 +53,8 @@ Keep container panels optional until a CLI and reachable engine exist. Use macOS
 
 ## Performance and failure behavior
 
+`command-center run TOOL` launches configured tools in the current terminal, including an empty Zellij shell pane. It forwards arguments and exit status without spawning a multiplexer. Plain `newsboat` uses its separate global feed list; document the configured runner to avoid the empty-URL failure. Keep full btop preferences intact. Small-pane btop uses `btop-compact.conf`, independent native presets, and `--compact` through the helper/runner/pane command. New SYSTEM templates use a compact monitor above two shell panes. Existing sessions and saved layouts remain authoritative.
+
 Use the two-second btop refresh and 30-minute weather cache as adjustable starting values. Weather requests must have HTTPS, connection/total timeouts, and a timestamped stale-cache fallback. The user chose postal code 84121 and BBC News, Hacker News, and GitHub Blog feeds. Refresh feeds conservatively and only when configured. Local preferences are seeded once and not overwritten on reinstall.
 
 Missing optional programs should leave a useful shell and actionable message. Required dependency failures should name the missing program and the installation step. Handle paths with spaces, launch from arbitrary directories, preserve exit status, and reject nested Zellij sessions. Avoid `eval` for user-supplied commands or layout values.

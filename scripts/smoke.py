@@ -200,7 +200,16 @@ def main():
             print("PASS: Newsboat UI loads local articles and read-state persists across processes")
             launcher("add-workspace", "system", "--cwd", str(project))
             assert action("query-tab-names").count("SYSTEM") == 2
+            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
+            action("write-chars", "\n")  # Start the compact monitor in the new SYSTEM tab.
+            wait_for(lambda: "cpu" in action("dump-screen").lower(), "compact SYSTEM monitor")
+            screen = action("dump-screen")
+            assert "Terminal size too small" not in screen, screen
+            layout = action("dump-layout")
+            assert "DIAGNOSTICS" in layout and "SYSTEM SHELL" in layout, layout
+            print("PASS: compact SYSTEM monitor and two lower shells render in a 100×30 terminal")
             action("close-tab")
+            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))
             launcher("save-layout", "smoke-saved")
             saved = base / "state/data/layouts/smoke-saved.kdl"
             assert saved.is_file()

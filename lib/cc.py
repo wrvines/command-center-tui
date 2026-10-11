@@ -40,6 +40,7 @@ def seed_defaults(config, system=None):
         ("config/newsboat/urls.example", "feeds"),
         ("config/newsboat/config", "newsboat.conf"),
         ("config/btop/btop.conf", "btop.conf"),
+        ("config/btop/btop-compact.conf", "btop-compact.conf"),
         ("config/lazygit/config.yml", "lazygit.yml"),
     ):
         content = (ROOT / source).read_bytes()

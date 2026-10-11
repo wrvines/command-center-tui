@@ -7,9 +7,12 @@ layout {
         pane size=2 borderless=true { plugin location="zellij:status-bar"; }
     }
     tab name="SYSTEM" {
-        pane name="CPU · MEMORY · DISK · NETWORK · PROCESSES" command="{{CC_PANEL}}" start_suspended=true size="80%" focus=true {
-            args "btop"
+        pane name="MONITOR · p switches views" command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
+            args "btop" "--compact"
         }
-        pane name="DIAGNOSTICS" size="20%"
+        pane split_direction="vertical" size="40%" {
+            pane name="DIAGNOSTICS"
+            pane name="SYSTEM SHELL"
+        }
     }
 }

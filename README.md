@@ -66,15 +66,18 @@ Open Ghostty normally and type any standalone command below. New-panel commands 
 | OpenCode v2 | `opencode` | `command-center pane opencode` |
 | Pi | `pi` | `command-center pane pi` |
 | Codex CLI | `codex` | `command-center pane codex` |
-| btop | `btop` | `command-center pane btop` |
-| Newsboat | `newsboat` | `command-center pane newsboat` |
+| btop — full view | `command-center run btop` | `command-center pane btop` |
+| btop — small pane | `command-center run btop --compact` | `command-center pane btop --compact` |
+| Newsboat — configured feeds | `command-center run newsboat` | `command-center pane newsboat` |
 | Weather | `command-center weather` | `command-center pane weather` |
 | Lazygit | `lazygit` | `command-center pane lazygit` |
 | Zellij | `zellij` | Already running in the command center |
 | Yazi — optional, uninstalled | `yazi` | `command-center pane yazi` |
 | lazydocker — optional, uninstalled | `lazydocker` | `command-center pane lazydocker` |
 
-Plain `newsboat` uses its default settings; the panel command loads your BBC News, Hacker News, and GitHub Blog feeds and scoped read-state. Start Lazygit from a Git repository. lazydocker also requires a running Docker-compatible engine. Run standalone `zellij` from an ordinary terminal to avoid nesting multiplexers.
+`command-center run TOOL` starts a tool in the **current terminal or empty shell pane**, using this setup's configuration. It opens no new panes. For Newsboat, this loads your BBC News, Hacker News, and GitHub Blog feeds and shared read-state. Plain `newsboat` reads a separate default feed list and can fail with "no URLs configured"; use `command-center run newsboat` for this setup. Plain `btop` likewise uses its own default preferences. Start Lazygit from a Git repository. lazydocker also requires a running Docker-compatible engine. Run standalone `zellij` from an ordinary terminal to avoid nesting multiplexers.
+
+Newsboat permits one running instance per feed database. If it reports "an instance of Newsboat is already running", return to that pane or quit it with `q` before launching elsewhere. Both configured commands use the same read-state; they do not create independent readers.
 
 Choose the placement of a new panel:
 
@@ -105,7 +108,7 @@ command-center detach             # Return to your ordinary terminal
 | Tab | Starting arrangement |
 | --- | --- |
 | DEV | Large coding shell; Git, development output, and another shell on the right |
-| SYSTEM | btop for CPU, memory, processes, disks, and network; diagnostics shell below |
+| SYSTEM | Compact btop above two shell panes; switch views for CPU, memory/disks, network, and processes |
 | AGENTS | Separate Hermes, OpenCode, Pi, and Codex CLI panes, all initially suspended |
 | NEWS & WEATHER | BBC News, Hacker News, and GitHub Blog in Newsboat; weather for 84121 |
 | OPERATIONS | Project logs, services, Git, and an optional container pane |
@@ -125,6 +128,29 @@ Each workspace gets its own default session name. Repeating a command reconnects
 These are starting arrangements. Add, close, move, resize, or float panels freely. Automatic rearrangement is disabled. Logs and services open to shells so you can choose your own project commands; no builds or services start automatically.
 
 On the original Mac, the existing **GitHub Dark High Contrast** theme remains in Ghostty. Zellij, btop, and Lazygit use a matching palette, and Newsboat uses terminal colors. The managed Ghostty include adds modest padding and does not change the startup command, font, or theme. Fresh machines retain their own terminal theme.
+
+## Smaller screens and panels
+
+Run these in an empty shell pane or an ordinary terminal:
+
+```sh
+command-center run newsboat          # Your configured feeds in this pane
+command-center run btop --compact    # CPU view in this pane
+```
+
+Inside compact btop, press **p** / **Shift+p** to cycle CPU → memory/disks → network → processes. Keys **1**, **2**, **3**, **4** toggle those individual sections. Keep Zellij in locked mode so the keys reach btop. The compact configuration retains the palette and two-second refresh, with fewer graphs; it has its own editable `~/.config/command-center/btop-compact.conf` and preserves your full-view `btop.conf`.
+
+Native btop was tested at 60 columns with CPU at 8 rows, memory/disks at 10 rows, network at 6 rows, and processes at 16 rows. These are usable test sizes, not a promise that every combination fits. A full view still needs more room. Enlarge or fullscreen a pane before choosing a view that needs more height. Btop cannot scale all its sections below their native minimum sizes. See [btop's native controls](https://github.com/aristocratos/btop).
+
+New SYSTEM tabs give the compact monitor 60% of the height, with two side-by-side shells underneath. Existing saved sessions keep your arrangement. To try the new template without replacing it, run this from a command-center shell:
+
+```sh
+command-center add-workspace system
+# Or add just a compact monitor to your current tab:
+command-center pane btop --compact --floating
+```
+
+Use Zellij's resize/fullscreen controls below as needed. You can also shrink Ghostty's font with its normal font-size controls to fit more terminal cells. Layout percentages divide the available cells; they do not shrink an application's text.
 
 ## Essential controls
 
@@ -209,6 +235,7 @@ Local editable settings live under `~/.config/command-center/`:
 | `feeds` | RSS feed URLs and labels |
 | `newsboat.conf` | Newsboat appearance and refresh settings |
 | `btop.conf` | Monitor appearance and two-second refresh |
+| `btop-compact.conf` | Separate small-pane monitor presets and fewer graphs |
 | `lazygit.yml` | Git UI appearance; automatic fetch disabled |
 
 Saved layouts, Newsboat read-state, Lazygit state, backups, and the installation manifest live under `~/Library/Application Support/command-center/`. Weather uses `~/Library/Caches/command-center/`. Zellij retains its own native session metadata. `COMMAND_CENTER_HOME=/some/path` redirects this project's configuration/data/cache for isolated testing; it does not redirect other tools globally.

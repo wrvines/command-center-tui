@@ -173,6 +173,41 @@ elif 'dump-layout' in sys.argv:
         self.assertIn("Already inside", result.stderr)
         self.assertFalse(self.log.exists())
 
+    def test_run_newsboat_in_current_pane_uses_scoped_feeds_and_forwards_arguments(self):
+        fake = self.base / "tools/newsboat"
+        fake.write_text('''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['CC_TEST_LOG'], 'a') as f:
+    f.write(json.dumps(sys.argv[1:]) + '\\n')
+sys.exit(7)
+''')
+        fake.chmod(0o755)
+        self.env["ZELLIJ"] = "1"
+        result = subprocess.run([str(ROOT / "bin/command-center"), "run", "newsboat", "--", "-e"],
+                                env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 7)
+        calls = self.calls()
+        self.assertEqual(len(calls), 1)  # No multiplexer action for a current-pane launch.
+        args = calls[0]
+        self.assertEqual(args[args.index("-u") + 1], str((self.base / "state/config/feeds").resolve()))
+        self.assertEqual(args[args.index("-c") + 1], str((self.base / "state/data/newsboat/cache.db").resolve()))
+        self.assertEqual(args[-1], "-e")
+        self.assertIn("BBC News", (self.base / "state/config/feeds").read_text())
+
+    def test_compact_pane_keeps_existing_monitor_preferences(self):
+        config = self.base / "state/config"
+        config.mkdir(parents=True)
+        (config / "btop.conf").write_text('shown_boxes = "mem net"\n')
+        self.env["ZELLIJ"] = "1"
+        result = self.launch("pane", "btop", "--compact", "--direction", "down")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls()[-1][-2:], ["btop", "--compact"])
+        self.assertEqual((config / "btop.conf").read_text(), 'shown_boxes = "mem net"\n')
+        self.assertTrue((config / "btop-compact.conf").exists())
+        result = self.launch("pane", "newsboat", "--compact")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("supported for btop", result.stderr)
+
     def test_save_layout_never_overwrites_existing_template(self):
         self.env["ZELLIJ"] = "1"
         command = [str(ROOT / "bin/command-center"), "save-layout", "my-layout"]

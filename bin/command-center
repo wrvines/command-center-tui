@@ -27,6 +27,9 @@ def parser():
     sub = p.add_subparsers(dest="action")
     sub.add_parser("doctor", help="Check installed tools and settings")
     sub.add_parser("layouts", help="List built-in and saved layouts")
+    run = sub.add_parser("run", help="Run a configured tool in this terminal or the current shell pane")
+    run.add_argument("tool", choices=TOOLS)
+    run.add_argument("tool_args", nargs=argparse.REMAINDER, help="Arguments passed directly to the tool")
     save = sub.add_parser("save-layout", help="Save current Zellij layout without replacing an existing file")
     save.add_argument("name")
     pane = sub.add_parser("pane", help="Open a tool pane in the current command-center session")
@@ -35,6 +38,7 @@ def parser():
     place.add_argument("--floating", action="store_true")
     place.add_argument("--direction", choices=("right", "down"))
     pane.add_argument("--cwd", type=Path)
+    pane.add_argument("--compact", action="store_true", help="Use the small-pane btop configuration")
     tab = sub.add_parser("add-workspace", help="Add a workspace tab to the current command-center session")
     tab.add_argument("workspace", choices=WORKSPACES)
     tab.add_argument("--cwd", type=Path)
@@ -103,6 +107,12 @@ def main():
         return 0
     if args.action == "weather":
         os.execve(str(ROOT / "bin/cc-weather"), ["cc-weather"] + (["--refresh"] if args.refresh else []), tool_env())
+    if args.action == "run":
+        seed()
+        tool_args = args.tool_args
+        if tool_args[:1] == ["--"]:
+            tool_args = tool_args[1:]
+        os.execve(str(ROOT / "bin/cc-panel"), ["cc-panel", args.tool, *tool_args], tool_env())
     if args.action == "save-layout":
         command = inside()
         name = valid_name(args.name)
@@ -124,12 +134,17 @@ def main():
         subprocess.run(inside() + ["action", "detach"], env=tool_env(), check=True)
         return 0
     if args.action == "pane":
+        if args.compact and args.tool != "btop":
+            raise ValueError("--compact is currently supported for btop")
+        seed()
         command = inside() + ["action", "new-pane", "--name", args.tool.upper()]
         if args.floating:
             command += ["--floating"]
         if args.direction:
             command += ["--direction", args.direction]
         command += ["--cwd", str(directory(args.cwd)), "--", str(ROOT / "bin/cc-panel"), args.tool]
+        if args.compact:
+            command.append("--compact")
         subprocess.run(command, env=tool_env(), check=True)
         return 0
     if args.action == "add-workspace":

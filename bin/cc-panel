@@ -25,7 +25,20 @@ case "$panel" in
     opencode|pi|codex|yazi) need "$panel"; exec "$panel" "$@" ;;
     btop)
         need btop
-        exec btop --config "$CC_CONFIG/btop.conf" --themes-dir "$CC_ROOT/config/btop/themes" "$@"
+        btop_config="$CC_CONFIG/btop.conf"
+        if [[ "${1:-}" == "--compact" ]]; then
+            shift
+            btop_config="$CC_CONFIG/btop-compact.conf"
+            # Existing installations are seeded once; restored suspended panes may
+            # reach this helper before the launcher has seeded the new preference.
+            if [[ ! -f "$btop_config" ]]; then
+                (umask 077; mkdir -p "$CC_CONFIG" && set -o noclobber &&
+                    cat "$CC_ROOT/config/btop/btop-compact.conf" > "$btop_config") 2>/dev/null ||
+                    [[ -f "$btop_config" ]] || fallback "Cannot initialize compact btop preferences at $btop_config."
+            fi
+            set -- --preset 1 "$@"
+        fi
+        exec btop --config "$btop_config" --themes-dir "$CC_ROOT/config/btop/themes" "$@"
         ;;
     newsboat)
         need newsboat
