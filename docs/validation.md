@@ -60,6 +60,8 @@ Local checks passed for both rendered macOS/Linux configurations, all six layout
 
 PowerShell 7.6.6 was downloaded only into a temporary test directory from the official release; its SHA-256 matched the GitHub asset digest. Actual PowerShell parsing and a simulated `wsl.exe` transport test passed for distro selection, apostrophes/spaces in checkout paths, installation/uninstallation flag forwarding, and WSL 1 rejection. This test did not run a Windows kernel or initialize a real WSL distro. A GitHub workflow exercises Linux/macOS configuration and real-session tests plus Windows PowerShell transport tests after publication; workflow results must be checked separately before claiming those hosts passed.
 
+The first [GitHub validation run](https://github.com/wrvines/command-center-tui/actions/runs/38170927586) passed for implementation commit `0d91c8123e258b1af107e56b23b94cdd88742022`: macOS and Ubuntu installed the core tools, passed configuration/behavior validation, and passed the real PTY smoke test. The Windows runner passed actual PowerShell parsing and the simulated WSL bridge checks. A full installation into a real WSL distro and native Ghostty window rendering remain manual checks. The subsequent documentation-only commit records these results without repeating CI.
+
 ## Reproduce
 
 ```sh
