@@ -98,11 +98,26 @@ Open the same distro in Windows Terminal and run `~/.local/bin/command-center`. 
 
 macOS also honors an absolute `XDG_CONFIG_HOME` for the project preferences. Linux runtime configuration follows the user's shell, removes macOS-only clipboard commands, and is generated under the scoped Zellij directory. WSL skips Ghostty configuration. Keep XDG settings consistent between installation, use, and uninstallation.
 
+## Reset the workspace session
+
+The same Python launcher provides `reset` on every supported platform. Run it from an ordinary terminal after detaching from Zellij:
+
+| Platform | Command |
+| --- | --- |
+| macOS or Linux | `command-center reset` |
+| Windows: open the installed WSL 2 distro in Windows Terminal | `~/.local/bin/command-center reset` |
+
+If the launcher directory is on PATH, `command-center reset` also works inside WSL. This is equivalent to `command-center --session fresh-start`: it creates the starter five-tab arrangement when that session does not exist, otherwise reconnects to or restores its saved arrangement. It preserves other sessions, saved layouts, tool preferences, feeds, and authentication. It does not reset macOS/Windows window positions or restore tool factory settings. Use another unused session name for an untouched starter arrangement again.
+
+For stock Zellij separately, detach and run `zellij --config /dev/null` on macOS, Linux, or inside WSL. Quit that stock session with Ctrl+q, then run `command-center` (or its full launcher path) to return. See the [README quick reference](../README.md#quick-reference-leave-restore-and-refresh).
+
 ## Optional tools
 
 AI agents, Neovim, Yazi, lazydocker, and a container engine are not installed automatically. The required workspaces still open, and missing tools leave helpful shells. See [OpenCode v2](https://opencode.ai/v2/docs), [Hermes](https://hermes-agent.nousresearch.com/docs/), and the respective tool documentation for installation/authentication. On this Mac the four coding agents already exist. New installations need their own accounts/settings; none are committed to the repository.
 
 ## Update from GitHub
+
+For a checkout on macOS, Linux, or inside WSL:
 
 ```sh
 git pull --ff-only
@@ -111,6 +126,15 @@ git pull --ff-only
 ```
 
 Changes to tracked layouts apply to new sessions. Existing sessions keep their arrangement; private preferences are never overwritten. Keep local code changes on a branch or commit them before pulling. Avoid moving or deleting the checkout while installed; uninstall first if you need to relocate it.
+
+For a Git for Windows checkout, update from PowerShell with the same WSL distro used during installation:
+
+```powershell
+git pull --ff-only
+./install.ps1 -Distro Ubuntu -NoDependencies
+```
+
+The wrapper runs the shared Linux validation and installer. After updating, open that distro in Windows Terminal and run `~/.local/bin/command-center reset`. The macOS/Linux launcher links refer to the checkout, so `reset` is available from the updated source without a separate platform-specific implementation. A rerun of the installer preserves ownership checks and existing preferences.
 
 ## Uninstall
 

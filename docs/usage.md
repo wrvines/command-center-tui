@@ -70,7 +70,12 @@ Detach with Ctrl+g, d, then run `command-center` again to reconnect. A named ses
 command-center --session work --project "/path/to/work"
 command-center --layout my-desk --session my-desk
 command-center --workspace system
+command-center reset
 ```
+
+`command-center reset` is equivalent to `command-center --session fresh-start`. Run it from an ordinary terminal after detaching. It creates the starter five-tab arrangement if that session does not exist; otherwise it reconnects to or restores `fresh-start` with its saved arrangement. It preserves other sessions and tool settings. Use another unused session name when you want an untouched starter arrangement again.
+
+This works on macOS, Linux, and inside Windows/WSL 2. In Windows Terminal, open the installed Linux distro and use `~/.local/bin/command-center reset` if the launcher directory is not on PATH. Reset is not a native PowerShell command. See [platform installation and updates](install.md).
 
 After a reboot or session exit, the launcher uses Zellij's saved metadata to reconstruct panes and tabs. Suspended commands wait for Enter. Tool process memory and running jobs do not survive reboot. Saved layouts keep their captured directories and command structure.
 
@@ -78,7 +83,7 @@ Hermes conversation history is separate. Resume a particular conversation using 
 
 ## News, weather, and operations
 
-Newsboat refreshes the selected feeds when you start its panel, with 15-second per-download timeouts. R refreshes all feeds; Enter opens a feed or article, q returns, and ? shows Newsboat's help. Article read-state lives in the command-center data directory and is retained across launches.
+Newsboat refreshes the selected feeds when you start its panel, with 15-second per-download timeouts. Shift+R refreshes all feeds; r refreshes the selected feed. Enter opens a feed or article, q returns, and ? shows Newsboat's help. Article read-state lives in the command-center data directory and is retained across launches.
 
 The weather panel displays an on-demand forecast and leaves a shell below it. Weather uses postal code 84121, caches for 30 minutes, and has a 15-second curl request limit. Refresh with:
 

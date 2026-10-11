@@ -77,6 +77,7 @@ def main():
     subprocess.run([str(ROOT / "scripts/validate.sh")], env=env, check=True)
     subprocess.run(integration, env=env, check=True)
     print('Launch: command-center (or "$HOME/.local/bin/command-center" if it is not on PATH yet).')
+    print("Starter workspace shortcut: command-center reset (equivalent to --session fresh-start; an existing session is reused).")
     if sys.platform == "linux" and not args.no_ghostty:
         print("Install Ghostty separately using https://ghostty.org/docs/install/binary, or use your existing terminal.")
     print("AI agents are optional; install and authenticate each one separately. See docs/install.md.")

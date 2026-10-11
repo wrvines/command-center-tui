@@ -95,3 +95,7 @@ command-center doctor
 ```
 
 The smoke test creates only its own disposable session. It may need permission to create Zellij IPC/cache state and inspect process resource usage when run from a restricted agent sandbox. Validation tests use temporary directories and do not change the user's installation.
+
+## Reset shortcut validation
+
+On October 11, 2026, `command-center reset` was verified through the existing isolated PTY launcher fixture to produce the same launch arguments as `command-center --session fresh-start`, include all five starter tabs for a new session, reattach without adding tabs when `fresh-start` exists, and reject nested launches before contacting Zellij. No personal sessions were started or stopped during this check. `scripts/validate.sh` also passed all 23 existing tests and native macOS/Linux configuration, six layout, Ghostty include, and Newsboat configuration checks.

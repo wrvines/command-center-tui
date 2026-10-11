@@ -28,6 +28,7 @@ def parser():
     sub = p.add_subparsers(dest="action")
     sub.add_parser("doctor", help="Check installed tools and settings")
     sub.add_parser("layouts", help="List built-in and saved layouts")
+    sub.add_parser("reset", help="Launch or reattach to fresh-start (same as --session fresh-start)")
     run = sub.add_parser("run", help="Run a configured tool in this terminal or the current shell pane")
     run.add_argument("tool", choices=TOOLS)
     run.add_argument("tool_args", nargs=argparse.REMAINDER, help="Arguments passed directly to the tool")
@@ -78,6 +79,8 @@ def inside():
 
 def main():
     args = parser().parse_args()
+    if args.action == "reset":
+        args.session, args.workspace, args.layout = "fresh-start", None, None
     if args.action == "doctor":
         env = tool_env()
         missing = []

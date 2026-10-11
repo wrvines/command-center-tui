@@ -4,6 +4,36 @@ A customizable terminal workspace built from Ghostty, Zellij, and existing CLI t
 
 The implementation uses small Python standard-library and Bash integration scripts. It has no custom TUI, web server, background daemon, or editor dependency. Neovim is not installed or required.
 
+## Quick reference: leave, restore, and refresh
+
+**Ghostty stays open when you leave Zellij. Detach keeps tools running; quit stops them.** Zellij shortcuts below start in locked mode and are pressed sequentially.
+
+| What you want | What to do |
+| --- | --- |
+| Return to Ghostty's ordinary shell; keep tools running | **Ctrl+g → d**, or `command-center detach` from a shell pane |
+| Fully quit Zellij and stop its running tools | **Ctrl+g → Ctrl+q** |
+| Reconnect to the default command center | `command-center` from an ordinary terminal |
+| Restore a fullscreen pane to its previous size | **Ctrl+g → Ctrl+p → f**; the same shortcut toggles fullscreen |
+| Resize a pane | **Ctrl+g → Ctrl+n → arrows or + / - → Enter** |
+| Open the starter workspace in the `fresh-start` session | **`command-center reset`**; an existing `fresh-start` session is reused |
+| Save your current arrangement | `command-center save-layout my-desk` from a shell pane |
+| Read an article inside Newsboat | **Enter** on a feed, then **Enter** on a headline; **q** goes back |
+| Refresh every Newsboat feed | **Shift+R** in the focused Newsboat pane |
+| Refresh only the selected Newsboat feed | **r** in the focused Newsboat pane |
+| Refresh the weather | `command-center weather --refresh` in the weather shell |
+
+Details: [leaving and resetting Zellij](#leaving-zellij-and-restoring-the-starting-arrangement), [reading and refreshing news](#reading-and-refreshing-news), [larger screens and multiple monitors](#larger-screens-and-multiple-monitors), [clean panes with remembered tools](#clean-panes-with-remembered-tools), and [the diagnostic panel](#what-the-diagnostic-panel-is-for).
+
+### Reset on macOS, Linux, and Windows
+
+| Platform | Where to run it | Command |
+| --- | --- | --- |
+| macOS | An ordinary Ghostty or other terminal shell | `command-center reset` |
+| Linux | An ordinary Ghostty or other terminal shell | `command-center reset` |
+| Windows / WSL 2 | Your installed Linux distro in Windows Terminal | `~/.local/bin/command-center reset` |
+
+These all use the same launcher and the same `fresh-start` session shortcut. If `~/.local/bin` is on PATH inside WSL, `command-center reset` works there too. Detach from an active multiplexer before launching. Windows support uses WSL 2; the command is not a native PowerShell application. **Reset reuses an existing `fresh-start` session and preserves tool preferences.**
+
 ## Install from GitHub
 
 macOS and Linux use the same installer. Python 3.9+ and Git are prerequisites; install [Homebrew](https://brew.sh) first for automatic core-tool installation.
@@ -103,6 +133,16 @@ command-center save-layout my-desk # Save your arrangement
 command-center detach             # Return to your ordinary terminal
 ```
 
+## Reading and refreshing news
+
+**You can read feed articles as text directly inside the Newsboat pane.** Select a feed and press **Enter**, then select a headline and press **Enter** again. Scroll through the text and press **q** to return to the headlines. Keep Zellij in locked mode so the keys reach Newsboat.
+
+Press **Shift+R** to refresh all feeds, or **r** to refresh the selected feed, without exiting or restarting the pane. When reading an article, return to the headlines with **q** first. Automatic background reload is disabled in the starting configuration; feeds refresh when Newsboat starts and when you request it.
+
+Some feeds supply only a summary. The current **o** key opens the linked article in your regular browser. An optional terminal browser such as w3m can instead open the link as text in the same pane and return to Newsboat when it exits. This integration is not enabled by the setup: it requires installing the terminal browser and changing `browser` in your private `newsboat.conf`, for example to `browser "w3m %u"`. Some sites do not work well in terminal browsers. See [Newsboat controls](https://newsboat.org/releases/2.42/docs/newsboat.html#_first_ui_interaction) and [browser configuration](https://newsboat.org/releases/2.42/docs/newsboat.html#browser).
+
+There is no universal refresh command for every tool. Btop updates automatically every two seconds with the starting preferences. Weather returns to a shell after displaying its forecast; run `command-center weather --refresh` there to fetch it again. Other tools handle their own refresh behavior.
+
 ## Workspaces
 
 | Tab | Starting arrangement |
@@ -125,6 +165,19 @@ DEV OUTPUT describes the middle-right shell's intended role in the starter DEV l
 | Build output | Your project's build command, such as `npm run build` |
 
 Run these from the appropriate project directory and use that project's documented commands. For a CLI coding-agent workflow, run OpenCode, Pi, or Codex in the main coding shell, then use the output shell to watch the app or tests the agent is changing. Press **Ctrl+C** to stop a running command. Leave this pane empty, rename it, or close it whenever you do not need it.
+
+### What the diagnostic panel is for
+
+The diagnostic panel is an ordinary shell for checking your system alongside btop. In the current SYSTEM template, the two shells beneath btop are available for this purpose. They do not run checks automatically, and their titles follow the commands you run.
+
+| Command | Purpose |
+| --- | --- |
+| `df -h` | Check available disk space |
+| `brew services list` | See Homebrew service status, where Homebrew is installed |
+| `lsof -iTCP -sTCP:LISTEN -n -P` | See which programs are listening on TCP ports, where `lsof` is installed |
+| `command-center doctor` | Check the command-center installation, tools, and active paths |
+
+These are optional, manually run checks. Use the shell for anything else, replace it with another tool, or close it to give btop more room.
 
 ### Launch individual workspaces
 
@@ -196,12 +249,70 @@ Start in locked mode: shortcuts go to the application in the focused pane. Press
 | Move a pane | Ctrl+g, Ctrl+h, arrows; Enter when finished |
 | Make the focused pane floating / tiled | Ctrl+g, Ctrl+p, e |
 | Show / hide floating panels | Ctrl+g, Ctrl+p, w |
-| Fullscreen the focused pane | Ctrl+g, Ctrl+p, f |
+| Toggle fullscreen / restore the focused pane | Ctrl+g, Ctrl+p, f |
 | Close the focused pane | Ctrl+g, Ctrl+p, x |
 | Add a tab | Ctrl+g, Ctrl+t, n |
 | Detach to the ordinary terminal | Ctrl+g, d |
+| Quit Zellij and stop its running tools | Ctrl+g, Ctrl+q |
 
 Single-action pane shortcuts return to locked mode. Closing a pane ends its program; detaching keeps programs running. The normal-mode status hints show Zellij's native mode shortcuts. See [everyday usage](docs/usage.md) for more detail.
+
+## Leaving Zellij and restoring the starting arrangement
+
+**To keep Ghostty open and return to its ordinary shell, detach with Ctrl+g → d.** You can also run `command-center detach` from a shell pane. The Zellij session and its tools stay running. Run `command-center` again to reconnect to the default session; for another named session, repeat its original launch command.
+
+**To fully exit Zellij, press Ctrl+g → Ctrl+q.** Ghostty remains open, but Zellij stops the programs in that session. A later launch can reconstruct the saved session; it cannot recover the stopped programs' process memory.
+
+If one pane is taking up the whole window, toggle fullscreen off with **Ctrl+g → Ctrl+p → f**. This returns to the previous arrangement; it does not reset your layout.
+
+To load the original five-tab starter arrangement separately, run this from an ordinary terminal:
+
+```sh
+command-center reset
+# Equivalent:
+command-center --session fresh-start
+```
+
+**`reset` is a shortcut for the `fresh-start` session.** Its first launch creates the starter arrangement; later launches reconnect to or restore that session, including any changes you made there. It preserves your other sessions, saved layouts, and tool preferences. Detach first if you are currently inside Zellij. For another untouched starter arrangement, choose a previously unused name, such as `command-center --session fresh-start-2`.
+
+### Try stock Zellij and return to the command center
+
+Detach first, then run this from an ordinary terminal on macOS, Linux, or inside WSL:
+
+```sh
+zellij --config /dev/null
+```
+
+This starts Zellij with its default configuration. It does not replace the command center's scoped settings. Stock Zellij starts in normal mode: press **Ctrl+q** to quit, then run `command-center` to return to the customized workspace. Inside WSL, use `~/.local/bin/command-center` if the launcher directory is not on PATH. The command-center shortcuts above assume its locked starting mode; stock Zellij uses its own default controls.
+
+Restoring tool preferences is separate from `command-center reset`. This setup keeps editable tool settings in its private configuration directory and seeds missing files from the repository defaults. Back up the specific preferences and stop the affected tools before replacing them. See [tool preferences](docs/customization.md#tool-preferences) and [platform paths](docs/install.md#paths-and-ownership).
+
+## Larger screens and multiple monitors
+
+**Use tiled Zellij panes for tools you watch continuously, fullscreen for temporary focus, and separate Ghostty windows for additional monitors.** Enlarge the Ghostty window to give Zellij more terminal cells, then resize or rearrange its panes. Adding more panes divides that space; floating panes cover other panes rather than adding space.
+
+| Arrangement | Useful for |
+| --- | --- |
+| Tiled panes in a large Ghostty window | An agent or coding shell alongside output, Git, and monitoring |
+| Fullscreen focused pane | Temporarily giving an agent, Newsboat, or btop the entire terminal window |
+| Floating pane | Occasional Git, weather, or another tool you can show and hide |
+| Separate Ghostty windows on different monitors | Keeping whole workspaces visible side by side |
+
+To keep the same command center across monitors, open another ordinary Ghostty window, move it to the other monitor, and run `command-center` again. Select a different tab in each window, such as DEV on the main monitor and SYSTEM on the second. With Zellij 0.45+, different tabs size independently; windows viewing the same tab share that tab's dimensions. They access the same session and programs. See [Zellij multiple-client behavior](https://zellij.dev/documentation/options#mirror_session).
+
+For independent sessions instead, run these in separate ordinary Ghostty windows:
+
+```sh
+# Main monitor:
+command-center --workspace dev
+
+# Another monitor:
+command-center --workspace system
+```
+
+Each workspace has its own session and arrangement. You can also leave a Ghostty window as a normal terminal. Avoid duplicating an active configured Newsboat reader across sessions: both use the same feed database, which permits only one instance.
+
+Once the arrangement feels right, run `command-center save-layout large-monitor` from a shell pane in that session. Choose a new name for later snapshots. Each session is saved separately; a Zellij layout does not record macOS window positions across monitors. The launcher imposes no maximum pane count, but available space and the resource usage of running tools determine what is practical.
 
 ## Customize while working
 
@@ -227,6 +338,14 @@ command-center --layout my-desk --session my-desk
 ```
 
 Saving refuses to overwrite an existing saved layout. Choose a new name or edit the existing file. Saved snapshots retain captured working directories; see [customization](docs/customization.md) to reuse them with a different project.
+
+### Clean panes with remembered tools
+
+**An exited session can restore its pane arrangement and recorded tools while leaving those tools stopped until you press Enter.** This setup disables saving old pane viewport content, so reconstruction does not replay the previous terminal screen. Restored command panes show a small "Press Enter to run…" prompt; they are not completely blank. Reattaching to a live session preserves its running tools and current screens instead.
+
+Save a reusable layout while the tools you want to remember are running. The snapshot records commands at save time; it is not a history of the last tool used in each shell. If you already quit a tool back to the shell, that tool may not be captured. Native command discovery can also be imperfect with wrappers, so inspect the exported commands before relying on a custom layout.
+
+For a saved layout that should always wait before starting a tool in a new session, mark that command pane `start_suspended=true` in its KDL file. Starter tool panes already use this setting. Plain shell panes start at a normal prompt. See [suspended layout commands](https://zellij.dev/documentation/creating-a-layout#start_suspended) and [session resurrection](https://zellij.dev/documentation/session-resurrection).
 
 ## Installation and configuration
 
@@ -276,6 +395,27 @@ On Linux and WSL, state defaults to `~/.local/share/command-center/` and cache t
 Yazi and lazydocker are optional and currently absent. Container use also needs a Docker-compatible CLI and engine; neither is configured by this setup. Missing optional tools leave a useful shell. Adding or removing panels never installs or uninstalls packages.
 
 ## Maintenance and rollback
+
+### Update an existing installation
+
+From the permanent checkout on macOS, Linux, or inside WSL:
+
+```sh
+git pull --ff-only
+./scripts/validate.sh
+./install.sh --no-dependencies
+```
+
+For a Git for Windows checkout, run these from PowerShell instead:
+
+```powershell
+git pull --ff-only
+./install.ps1 -Distro Ubuntu -NoDependencies
+```
+
+Use the distro where you originally installed it. Then open that distro in Windows Terminal and run `~/.local/bin/command-center reset`. The launcher links point to the checkout, so updated commands become available after pulling; reinstalling checks the integrations while preserving existing preferences. Keep local code changes on a branch or commit them before pulling. See [platform update instructions](docs/install.md#update-from-github).
+
+### Validate or uninstall
 
 ```sh
 command-center doctor

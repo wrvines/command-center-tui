@@ -31,6 +31,10 @@ Ghostty must open as a normal terminal with zsh. Never auto-start the command ce
 
 Panel counts and arrangements belong to the user. Layouts are starting templates, not enforced structures. Support native additions, closures, movement, resizing, floating panes, and tab changes; disable automatic rearrangement initially. Preserve changes on reattachment. Export user layouts with native Zellij `dump-layout` and allow selection for new sessions without resetting live sessions.
 
+`command-center reset` is the user's requested shortcut for `command-center --session fresh-start`. It follows the ordinary launch/attach path, reuses an existing `fresh-start` session, and preserves other sessions and tool preferences. Keep the distinction between this session shortcut and a destructive settings reset clear in the README.
+
+This shortcut is shared by macOS, Linux, and Windows/WSL 2 through the same launcher. Windows users run it inside their installed Linux distro, using `~/.local/bin/command-center reset` when needed. Keep installer completion messages and platform update instructions consistent; do not imply native PowerShell runtime support.
+
 Keep expensive commands suspended until the user starts them. Hidden panes can still consume resources. Use native Zellij facilities for floating panels, navigation, layout export, and resurrection. Keep bundled plugins and locked mode to pass coding-agent shortcuts through. DEV prioritizes coding-agent and shell panes rather than an editor. Do not alter provider settings or authentication. Zellij 0.45.1 requires the explicit scoped config-dir supplied by the launcher to restore cached layouts on this Mac; preserve that alongside the explicit config file.
 
 ## Configuration ownership
