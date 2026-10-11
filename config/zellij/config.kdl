@@ -1,0 +1,71 @@
+// Preserve application shortcuts until Ctrl-g opens Zellij's controls.
+default_mode "locked"
+default_shell "/bin/zsh"
+on_force_close "detach"
+auto_layout false
+pane_frames true
+pane_frame_style "full"
+simplified_ui true
+session_serialization true
+serialize_pane_viewport false
+serialization_interval 60
+scroll_buffer_size 5000
+copy_command "pbcopy"
+copy_on_select true
+show_startup_tips false
+show_release_notes false
+web_server false
+web_sharing "disabled"
+theme "command-center"
+themes {
+    command-center {
+        fg "#f0f3f6"
+        bg "#0a0c10"
+        black "#272e33"
+        red "#ff9492"
+        green "#26cd4d"
+        yellow "#f0b72f"
+        blue "#71b7ff"
+        magenta "#cb9eff"
+        cyan "#39c5cf"
+        white "#f0f3f6"
+        orange "#ffb757"
+    }
+}
+ui {
+    pane_frames {
+        rounded_corners true
+    }
+}
+keybinds {
+    normal {
+        bind "d" { Detach; }
+        bind "1" { GoToTab 1; SwitchToMode "Locked"; }
+        bind "2" { GoToTab 2; SwitchToMode "Locked"; }
+        bind "3" { GoToTab 3; SwitchToMode "Locked"; }
+        bind "4" { GoToTab 4; SwitchToMode "Locked"; }
+        bind "5" { GoToTab 5; SwitchToMode "Locked"; }
+        bind "Esc" "Enter" { SwitchToMode "Locked"; }
+    }
+    pane {
+        bind "n" { NewPane; SwitchToMode "Locked"; }
+        bind "d" { NewPane "Down"; SwitchToMode "Locked"; }
+        bind "r" { NewPane "Right"; SwitchToMode "Locked"; }
+        bind "x" { CloseFocus; SwitchToMode "Locked"; }
+        bind "f" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
+        bind "w" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        bind "e" { TogglePaneEmbedOrFloating; SwitchToMode "Locked"; }
+    }
+    tab {
+        bind "n" { NewTab; SwitchToMode "Locked"; }
+        bind "x" { CloseTab; SwitchToMode "Locked"; }
+        bind "1" { GoToTab 1; SwitchToMode "Locked"; }
+        bind "2" { GoToTab 2; SwitchToMode "Locked"; }
+        bind "3" { GoToTab 3; SwitchToMode "Locked"; }
+        bind "4" { GoToTab 4; SwitchToMode "Locked"; }
+        bind "5" { GoToTab 5; SwitchToMode "Locked"; }
+    }
+    shared_except "normal" "locked" {
+        bind "Enter" "Esc" { SwitchToMode "Locked"; }
+    }
+}

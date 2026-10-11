@@ -1,0 +1,29 @@
+// Starting template: rearrange freely and save your own version.
+layout {
+    cwd "{{PROJECT}}"
+    default_tab_template {
+        pane size=1 borderless=true { plugin location="zellij:tab-bar"; }
+        children
+        pane size=2 borderless=true { plugin location="zellij:status-bar"; }
+    }
+    tab name="OPERATIONS" {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="PROJECT LOGS" command="{{CC_PANEL}}" start_suspended=true focus=true {
+                    args "logs"
+                }
+                pane name="SERVICES" command="{{CC_PANEL}}" start_suspended=true {
+                    args "services"
+                }
+            }
+            pane split_direction="horizontal" {
+                pane name="OPERATIONS GIT" command="{{CC_PANEL}}" start_suspended=true {
+                    args "lazygit"
+                }
+                pane name="CONTAINERS (OPTIONAL)" command="{{CC_PANEL}}" start_suspended=true {
+                    args "lazydocker"
+                }
+            }
+        }
+    }
+}

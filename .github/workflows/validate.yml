@@ -1,0 +1,35 @@
+name: Validate installers and terminal configuration
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install core tools
+        shell: bash
+        run: |
+          if ! command -v brew >/dev/null; then
+            curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o /tmp/homebrew-install.sh
+            NONINTERACTIVE=1 bash /tmp/homebrew-install.sh
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          fi
+          brew install zellij btop newsboat lazygit
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+      - run: ./scripts/validate.sh
+      - name: Real terminal smoke check
+        run: python3 -u -B scripts/smoke.py
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PowerShell WSL entry points
+        shell: pwsh
+        run: ./scripts/test-wsl.ps1

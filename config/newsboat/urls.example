@@ -1,0 +1,3 @@
+https://feeds.bbci.co.uk/news/rss.xml "news" "~BBC News"
+https://hnrss.org/frontpage "tech" "~Hacker News"
+https://github.blog/feed/ "dev" "~GitHub Blog"

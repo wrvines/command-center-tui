@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Launch and customize existing terminal tools through Zellij."""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from cc import ROOT, layout_source, paths, preferences, render_layout, seed, tool_env, valid_name, zellij_config
+
+WORKSPACES = ("dev", "system", "agents", "news-weather", "operations")
+TOOLS = ("shell", "hermes", "opencode", "pi", "codex", "btop", "newsboat",
+         "weather", "lazygit", "yazi", "lazydocker", "logs", "services")
+ZCONFIG = ROOT / "config/zellij/config.kdl"
+
+
+def parser():
+    p = argparse.ArgumentParser(description="An optional Zellij workspace; Ghostty stays a normal terminal.")
+    p.add_argument("--project", type=Path, help="Working directory for a NEW session")
+    p.add_argument("--session", help="Named session (default: command-center, or command-center-WORKSPACE)")
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--workspace", choices=WORKSPACES, help="Launch one workspace in its own session")
+    group.add_argument("--layout", help="Built-in or saved layout for a NEW session")
+    sub = p.add_subparsers(dest="action")
+    sub.add_parser("doctor", help="Check installed tools and settings")
+    sub.add_parser("layouts", help="List built-in and saved layouts")
+    save = sub.add_parser("save-layout", help="Save current Zellij layout without replacing an existing file")
+    save.add_argument("name")
+    pane = sub.add_parser("pane", help="Open a tool pane in the current command-center session")
+    pane.add_argument("tool", choices=TOOLS)
+    place = pane.add_mutually_exclusive_group()
+    place.add_argument("--floating", action="store_true")
+    place.add_argument("--direction", choices=("right", "down"))
+    pane.add_argument("--cwd", type=Path)
+    tab = sub.add_parser("add-workspace", help="Add a workspace tab to the current command-center session")
+    tab.add_argument("workspace", choices=WORKSPACES)
+    tab.add_argument("--cwd", type=Path)
+    weather = sub.add_parser("weather", help="Show a cached forecast")
+    weather.add_argument("--refresh", action="store_true")
+    sub.add_parser("detach", help="Return to your normal terminal, leaving panes running")
+    return p
+
+
+def directory(path):
+    value = (path or Path.cwd()).expanduser().resolve()
+    if not value.is_dir():
+        raise ValueError("Directory does not exist: " + str(value))
+    return value
+
+
+def zellij():
+    executable = shutil.which("zellij", path=tool_env()["PATH"])
+    if not executable:
+        raise ValueError("Zellij is missing. Run ./install.sh, or install Zellij 0.45.1+ with your package manager")
+    # Zellij 0.45.1 needs a config-dir to resolve absolute serialized layout paths
+    # during resurrection, even when its configuration was supplied explicitly.
+    config, _, _ = paths()
+    return [executable, "--config-dir", str(config / "zellij"), "--config", str(zellij_config())]
+
+
+def inside():
+    if not os.environ.get("ZELLIJ"):
+        raise ValueError("Run this command from a panel inside command-center")
+    # Restored sessions may have an older server environment; explicit commands use the current root.
+    return zellij()
+
+
+def main():
+    args = parser().parse_args()
+    if args.action == "doctor":
+        env = tool_env()
+        missing = []
+        for tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3",
+                     "hermes", "opencode", "pi", "codex", "yazi", "lazydocker", "docker"):
+            executable = shutil.which(tool, path=env["PATH"])
+            label = "required" if tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3") else "optional"
+            detail = executable or "not installed"
+            if executable and tool in ("zellij", "btop", "newsboat", "lazygit"):
+                flag = "-v" if tool == "newsboat" else "--version"
+                result = subprocess.run([executable, flag], capture_output=True, text=True, timeout=10)
+                detail += " — " + (result.stdout.splitlines() or ["version unavailable"])[0]
+            print(f"{tool:12} {label:8} {detail}")
+            if not executable and label == "required":
+                missing.append(tool)
+        config, data, cache = paths()
+        print(f"\nPreferences: {config / 'preferences.json'}\nFeeds:       {config / 'feeds'}\nLayouts:     {data / 'layouts'}\nCache:       {cache}")
+        print("Weather:     " + str(preferences().get("weather_location", "not set")))
+        if not missing:
+            result = subprocess.run(zellij() + ["setup", "--check"], env=env, capture_output=True, text=True)
+            if result.returncode:
+                print(result.stdout + result.stderr, file=sys.stderr)
+                return 1
+            print("Zellij configuration: valid\nGhostty startup: normal shell (no auto-start configured by this project)")
+        return int(bool(missing))
+    if args.action == "layouts":
+        _, data, _ = paths()
+        for kind, folder in (("built-in", ROOT / "config/zellij/layouts"), ("saved", data / "layouts")):
+            for path in sorted(folder.glob("*.kdl")):
+                print(f"{path.stem:24} {kind}")
+        return 0
+    if args.action == "weather":
+        os.execve(str(ROOT / "bin/cc-weather"), ["cc-weather"] + (["--refresh"] if args.refresh else []), tool_env())
+    if args.action == "save-layout":
+        command = inside()
+        name = valid_name(args.name)
+        seed()
+        _, data, _ = paths()
+        target = data / "layouts" / (name + ".kdl")
+        if target.exists():
+            raise ValueError("Layout already exists; choose a new name or edit it: " + str(target))
+        result = subprocess.run(command + ["action", "dump-layout"], env=tool_env(), capture_output=True, text=True, check=True)
+        if "layout" not in result.stdout:
+            raise ValueError("Zellij did not return a layout")
+        with target.open("x") as handle:
+            handle.write(result.stdout)
+        target.chmod(0o600)
+        print("Saved " + str(target))
+        print(f"Use for a new session: command-center --layout {name} --session {name}")
+        return 0
+    if args.action == "detach":
+        subprocess.run(inside() + ["action", "detach"], env=tool_env(), check=True)
+        return 0
+    if args.action == "pane":
+        command = inside() + ["action", "new-pane", "--name", args.tool.upper()]
+        if args.floating:
+            command += ["--floating"]
+        if args.direction:
+            command += ["--direction", args.direction]
+        command += ["--cwd", str(directory(args.cwd)), "--", str(ROOT / "bin/cc-panel"), args.tool]
+        subprocess.run(command, env=tool_env(), check=True)
+        return 0
+    if args.action == "add-workspace":
+        layout = render_layout(args.workspace, directory(args.cwd))
+        subprocess.run(inside() + ["action", "new-tab", "--layout-string", layout], env=tool_env(), check=True)
+        return 0
+    if os.environ.get("ZELLIJ") or os.environ.get("TMUX"):
+        raise ValueError("Already inside a multiplexer. Use 'command-center pane TOOL' or launch from a normal Ghostty shell.")
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise ValueError("Launch command-center from an interactive terminal such as Ghostty")
+    project = directory(args.project)
+    name = valid_name(args.session or ("command-center-" + args.workspace if args.workspace else "command-center"))
+    layout_name = args.layout or args.workspace or "command-center"
+    command = zellij()
+    seed()
+    # Passing a layout while attaching would add tabs. Only new sessions receive a layout.
+    listed = subprocess.run(command + ["list-sessions", "--no-formatting", "--short"],
+                            env=tool_env(), capture_output=True, text=True, timeout=10)
+    sessions = [line.split()[0] for line in listed.stdout.splitlines() if line.strip()]
+    if name in sessions:
+        if args.project or args.layout or args.workspace:
+            print("Reattaching to existing session; its directories and arrangement are preserved.")
+        os.execvpe(command[0], command + ["attach", name], tool_env())
+    layout = render_layout(layout_name, project)
+    os.chdir(project)
+    os.execvpe(command[0], command + ["--layout-string", layout, "attach", "--create", name], tool_env())
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main() or 0)
+    except (ValueError, OSError, subprocess.TimeoutExpired) as error:
+        print("command-center: " + str(error), file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as error:
+        print("command-center: tool exited with status " + str(error.returncode), file=sys.stderr)
+        sys.exit(error.returncode or 1)

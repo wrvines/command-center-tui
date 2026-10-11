@@ -1,0 +1,14 @@
+# Refresh once when the user starts this panel; R refreshes all feeds manually.
+auto-reload no
+refresh-on-startup yes
+download-timeout 15
+reload-threads 2
+browser "open %u"
+color background default default
+color listnormal default default
+color listnormal_unread white default bold
+color listfocus black cyan bold
+color listfocus_unread black cyan bold
+color info cyan default
+color article default default
+color title blue default bold

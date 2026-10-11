@@ -1,0 +1,64 @@
+#!/bin/bash
+# Existing tools only. The fallback shell remains useful when a tool is absent.
+set -u
+CC_ROOT="${CC_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+CC_CONFIG="${CC_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/command-center}"
+case "$(uname -s)" in
+    Darwin) CC_DATA="${CC_DATA:-$HOME/Library/Application Support/command-center}" ;;
+    *) CC_DATA="${CC_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/command-center}" ;;
+esac
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin"
+panel_shell="${SHELL:-/bin/bash}"
+[[ -x "$panel_shell" ]] || panel_shell=/bin/bash
+panel="${1:-shell}"
+shift || true
+fallback() {
+    printf '\n%s\n\n' "$1"
+    exec "$panel_shell" -l
+}
+need() {
+    command -v "$1" >/dev/null 2>&1 || fallback "$1 is not installed. You can use this shell instead."
+}
+case "$panel" in
+    shell) exec "$panel_shell" -l ;;
+    hermes) need hermes; exec hermes chat "$@" ;;
+    opencode|pi|codex|yazi) need "$panel"; exec "$panel" "$@" ;;
+    btop)
+        need btop
+        exec btop --config "$CC_CONFIG/btop.conf" --themes-dir "$CC_ROOT/config/btop/themes" "$@"
+        ;;
+    newsboat)
+        need newsboat
+        mkdir -p "$CC_DATA/newsboat"
+        exec newsboat -C "$CC_CONFIG/newsboat.conf" -u "$CC_CONFIG/feeds" \
+            -c "$CC_DATA/newsboat/cache.db" --queue-file "$CC_DATA/newsboat/queue" \
+            --search-history-file "$CC_DATA/newsboat/search-history" \
+            --cmdline-history-file "$CC_DATA/newsboat/command-history" "$@"
+        ;;
+    weather)
+        "$CC_ROOT/bin/cc-weather" "$@" || true
+        printf '\nRefresh: command-center weather --refresh\n'
+        exec "$panel_shell" -l
+        ;;
+    lazygit)
+        need lazygit
+        git rev-parse --git-dir >/dev/null 2>&1 || fallback "This directory is not a Git repository. Use cd to choose one, then run command-center pane lazygit."
+        mkdir -p "$CC_DATA/lazygit"
+        exec lazygit --use-config-dir "$CC_DATA/lazygit" --use-config-file "$CC_CONFIG/lazygit.yml" "$@"
+        ;;
+    lazydocker)
+        need lazydocker
+        need docker
+        # Do not start an engine or contact it automatically during workspace startup.
+        exec lazydocker "$@"
+        ;;
+    logs)
+        printf '\nLOGS — choose a project log in this shell.\nExample: tail -F /path/to/service.log\n\n'
+        exec "$panel_shell" -l
+        ;;
+    services)
+        printf '\nSERVICES — inspect or run your project services here.\nExamples: brew services list; docker ps; lsof -iTCP -sTCP:LISTEN -n -P\n\n'
+        exec "$panel_shell" -l
+        ;;
+    *) fallback "Unknown panel: $panel" ;;
+esac

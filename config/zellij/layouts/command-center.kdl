@@ -1,0 +1,77 @@
+// Starting template: rearrange freely and save your own version.
+layout {
+    cwd "{{PROJECT}}"
+    default_tab_template {
+        pane size=1 borderless=true { plugin location="zellij:tab-bar"; }
+        children
+        pane size=2 borderless=true { plugin location="zellij:status-bar"; }
+    }
+    tab name="DEV" focus=true {
+        pane split_direction="vertical" {
+            pane name="CODE / SHELL" size="60%" focus=true
+            pane split_direction="horizontal" {
+                pane name="GIT" command="{{CC_PANEL}}" start_suspended=true {
+                    args "lazygit"
+                }
+                pane name="DEV OUTPUT"
+                pane name="SHELL"
+            }
+        }
+    }
+    tab name="SYSTEM" {
+        pane name="CPU · MEMORY · DISK · NETWORK · PROCESSES" command="{{CC_PANEL}}" start_suspended=true size="80%" focus=true {
+            args "btop"
+        }
+        pane name="DIAGNOSTICS" size="20%"
+    }
+    tab name="AGENTS" {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="HERMES" command="{{CC_PANEL}}" start_suspended=true focus=true {
+                    args "hermes"
+                }
+                pane name="OPENCODE" command="{{CC_PANEL}}" start_suspended=true {
+                    args "opencode"
+                }
+            }
+            pane split_direction="horizontal" {
+                pane name="PI" command="{{CC_PANEL}}" start_suspended=true {
+                    args "pi"
+                }
+                pane name="CODEX CLI" command="{{CC_PANEL}}" start_suspended=true {
+                    args "codex"
+                }
+            }
+        }
+    }
+    tab name="NEWS & WEATHER" {
+        pane split_direction="vertical" {
+            pane name="HEADLINES / RSS" command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
+                args "newsboat"
+            }
+            pane name="WEATHER" command="{{CC_PANEL}}" start_suspended=true size="40%" {
+                args "weather"
+            }
+        }
+    }
+    tab name="OPERATIONS" {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="PROJECT LOGS" command="{{CC_PANEL}}" start_suspended=true focus=true {
+                    args "logs"
+                }
+                pane name="SERVICES" command="{{CC_PANEL}}" start_suspended=true {
+                    args "services"
+                }
+            }
+            pane split_direction="horizontal" {
+                pane name="OPERATIONS GIT" command="{{CC_PANEL}}" start_suspended=true {
+                    args "lazygit"
+                }
+                pane name="CONTAINERS (OPTIONAL)" command="{{CC_PANEL}}" start_suspended=true {
+                    args "lazydocker"
+                }
+            }
+        }
+    }
+}

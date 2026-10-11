@@ -1,0 +1,12 @@
+gui:
+  theme:
+    activeBorderColor: ['#71b7ff', bold]
+    inactiveBorderColor: ['#9ea7b3']
+    optionsTextColor: ['#39c5cf']
+    selectedLineBgColor: ['#1b3a58']
+    defaultFgColor: ['#f0f3f6']
+  nerdFontsVersion: ''
+  showFileIcons: false
+git:
+  autoFetch: false
+  autoRefresh: false
