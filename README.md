@@ -113,6 +113,21 @@ command-center detach             # Return to your ordinary terminal
 | NEWS & WEATHER | BBC News, Hacker News, and GitHub Blog in Newsboat; weather for 84121 |
 | OPERATIONS | Project logs, services, Git, and an optional container pane |
 
+### What to run in DEV OUTPUT
+
+DEV OUTPUT describes the middle-right shell's intended role in the starter DEV layout. It is an ordinary shell for watching your project's output while you work in another pane. Its visible title follows what it is running; it starts at a shell prompt, and you choose the command yourself.
+
+| Use | Example |
+| --- | --- |
+| Development server | `npm run dev`, if your project defines a `dev` script |
+| Tests in watch mode | Your project's test-watch command; for runners that support it, `npm test -- --watch` |
+| Application logs | `tail -F /path/to/app.log` |
+| Build output | Your project's build command, such as `npm run build` |
+
+Run these from the appropriate project directory and use that project's documented commands. For a CLI coding-agent workflow, run OpenCode, Pi, or Codex in the main coding shell, then use the output shell to watch the app or tests the agent is changing. Press **Ctrl+C** to stop a running command. Leave this pane empty, rename it, or close it whenever you do not need it.
+
+### Launch individual workspaces
+
 Start just one workspace from your normal Ghostty terminal:
 
 ```sh
@@ -128,6 +143,22 @@ Each workspace gets its own default session name. Repeating a command reconnects
 These are starting arrangements. Add, close, move, resize, or float panels freely. Automatic rearrangement is disabled. Logs and services open to shells so you can choose your own project commands; no builds or services start automatically.
 
 On the original Mac, the existing **GitHub Dark High Contrast** theme remains in Ghostty. Zellij, btop, and Lazygit use a matching palette, and Newsboat uses terminal colors. The managed Ghostty include adds modest padding and does not change the startup command, font, or theme. Fresh machines retain their own terminal theme.
+
+## Automatic pane titles
+
+Starter layouts and `command-center pane TOOL` use automatic titles instead of fixed labels such as GIT or DEV OUTPUT. Idle shells show `zsh` or `bash`; a command such as `npm run dev` changes the title to `npm`, then the title returns to the shell when it finishes. Tools can supply their own richer titles. Command arguments are not included by our hooks. Tab names such as DEV and SYSTEM stay visible.
+
+This uses small shell hooks inside command-center shells, with no polling service or changes to your normal shell startup files. Zsh loads your original startup files, including a custom `ZDOTDIR`; Bash loads your `.bashrc`. Other shells retain their own title behavior. Bash preserves existing DEBUG traps; when one exists, arbitrary-command tracking is left to that integration. Application-provided titles still work.
+
+Existing saved sessions retain their fixed labels and already-running shells. To enable automatic naming for an existing shell pane without rearranging it:
+
+```sh
+command-center run shell
+```
+
+That clears its fixed label and opens a shell with the title hooks. To clear fixed labels across an existing session, use `command-center titles --all`; it first saves a layout backup containing the previous arrangement and titles. Existing shells still need the command above to load the hooks. New sessions use the new defaults, for example `command-center --session auto-titles`.
+
+You can keep a deliberate fixed label with `command-center pane shell --name "MY PANEL"`, or `zellij action rename-pane "MY PANEL"`. It overrides automatic titles. Return the focused pane to automatic titles with `command-center titles` or `zellij action rename-pane ""`; `undo-rename-pane` restores an earlier name and does not reliably clear an original layout label. See [Zellij title actions](https://zellij.dev/documentation/cli-actions#rename-pane) and [zsh hook functions](https://zsh.sourceforge.io/Doc/Release/Functions.html#Hook-Functions).
 
 ## Smaller screens and panels
 
@@ -267,6 +298,7 @@ bin/                 launch, panel, and weather helpers
 lib/                 shared path, preference, and layout rendering helpers
 config/ghostty/      small managed include
 config/zellij/       keyboard/theme config and six reusable KDL layouts
+config/shell/        scoped automatic-title integration for zsh and bash
 config/btop/         default config and theme
 config/newsboat/     default config and feed list
 config/lazygit/      default Git UI config

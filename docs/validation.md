@@ -72,6 +72,14 @@ Both platform configurations, all six layouts, shell/Python syntax, and 19 behav
 
 The new compact profile was seeded into the original Mac's private preferences without replacing `btop.conf`, feeds, or existing configuration. README and agent guidance document the configured current-pane launch, compact presets, and cache-lock behavior. Native Ghostty visual inspection remains untested.
 
+## Automatic pane title update
+
+On October 11, 2026, a disposable native Zellij session showed that an unnamed pane retained `Pane #1` while `sleep` ran, even though Zellij's process metadata detected it. Preset pane names also override application titles. Built-in layouts and new-pane defaults now omit fixed names, and small scoped zsh/bash hooks supply command titles through native terminal escape sequences. Explicit manual names still override those titles.
+
+The real-session check passed with both zsh 5.9 and macOS Bash 3.2: idle shell title, command title during `sleep`, reset after completion, manual override, and clearing the fixed name. Native session attachment/resurrection, all five tabs, compact SYSTEM at 100×30, Git and Newsboat UI checks, and pane actions passed. Original `ZDOTDIR` redirection/startup order, existing Bash DEBUG/PROMPT_COMMAND integration, command-argument omission without evaluation, and backup/plugin exclusion when clearing all labels are covered by the behavior suite (23 tests).
+
+The title wrapper uses original shell startup files without editing them. Mac/Linux now render their scoped shell path into the private `zellij/platform.kdl`. Existing running shells need an explicit `command-center run shell` to load the hooks; saved layouts retain fixed names until deliberately cleared. Native Ghostty visual inspection and non-zsh/bash shell integration remain outside these checks.
+
 ## Reproduce small-screen checks
 
 ```sh

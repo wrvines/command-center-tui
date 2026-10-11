@@ -14,13 +14,16 @@ panel="${1:-shell}"
 shift || true
 fallback() {
     printf '\n%s\n\n' "$1"
-    exec "$panel_shell" -l
+    exec "$CC_ROOT/bin/cc-shell"
 }
 need() {
     command -v "$1" >/dev/null 2>&1 || fallback "$1 is not installed. You can use this shell instead."
 }
+if [[ -n ${ZELLIJ:-} && -t 1 ]]; then
+    printf '\033]2;%s\007' "$panel"
+fi
 case "$panel" in
-    shell) exec "$panel_shell" -l ;;
+    shell) exec "$CC_ROOT/bin/cc-shell" ;;
     hermes) need hermes; exec hermes chat "$@" ;;
     opencode|pi|codex|yazi) need "$panel"; exec "$panel" "$@" ;;
     btop)
@@ -51,7 +54,7 @@ case "$panel" in
     weather)
         "$CC_ROOT/bin/cc-weather" "$@" || true
         printf '\nRefresh: command-center weather --refresh\n'
-        exec "$panel_shell" -l
+        exec "$CC_ROOT/bin/cc-shell"
         ;;
     lazygit)
         need lazygit
@@ -67,11 +70,11 @@ case "$panel" in
         ;;
     logs)
         printf '\nLOGS — choose a project log in this shell.\nExample: tail -F /path/to/service.log\n\n'
-        exec "$panel_shell" -l
+        exec "$CC_ROOT/bin/cc-shell"
         ;;
     services)
         printf '\nSERVICES — inspect or run your project services here.\nExamples: brew services list; docker ps; lsof -iTCP -sTCP:LISTEN -n -P\n\n'
-        exec "$panel_shell" -l
+        exec "$CC_ROOT/bin/cc-shell"
         ;;
     *) fallback "Unknown panel: $panel" ;;
 esac

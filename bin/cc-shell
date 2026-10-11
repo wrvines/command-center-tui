@@ -1,0 +1,16 @@
+#!/bin/bash
+# Scoped shell integration; the user's startup files remain in their normal place.
+set -u
+CC_ROOT="${CC_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_ROOT
+cc_user_shell="${SHELL:-/bin/bash}"
+[[ -x "$cc_user_shell" && "$cc_user_shell" != "$CC_ROOT/bin/cc-shell" ]] || cc_user_shell=/bin/bash
+case "${cc_user_shell##*/}" in
+    zsh)
+        export CC_ORIGINAL_ZDOTDIR="${ZDOTDIR-}" CC_ORIGINAL_ZDOTDIR_SET="${ZDOTDIR+x}"
+        export ZDOTDIR="$CC_ROOT/config/shell/zsh"
+        exec "$cc_user_shell" -l "$@"
+        ;;
+    bash) exec "$cc_user_shell" --rcfile "$CC_ROOT/config/shell/bashrc" -i "$@" ;;
+    *) exec "$cc_user_shell" -l "$@" ;;
+esac

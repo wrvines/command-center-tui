@@ -9,18 +9,18 @@ layout {
     tab name="OPERATIONS" {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
-                pane name="PROJECT LOGS" command="{{CC_PANEL}}" start_suspended=true focus=true {
+                pane command="{{CC_PANEL}}" start_suspended=true focus=true {
                     args "logs"
                 }
-                pane name="SERVICES" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "services"
                 }
             }
             pane split_direction="horizontal" {
-                pane name="OPERATIONS GIT" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "lazygit"
                 }
-                pane name="CONTAINERS (OPTIONAL)" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "lazydocker"
                 }
             }

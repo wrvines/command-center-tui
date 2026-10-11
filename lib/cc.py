@@ -64,9 +64,10 @@ def seed():
 
 def zellij_config_content(system=None):
     source = ROOT / "config/zellij/config.kdl"
+    content = source.read_text().replace('default_shell "/bin/zsh"',
+                                         'default_shell ' + json.dumps(str(ROOT / "bin/cc-shell")))
     if (system or sys.platform) == "darwin":
-        return source.read_text()
-    content = source.read_text().replace('default_shell "/bin/zsh"\n', '')
+        return content
     # Native OSC 52 clipboard support is the portable fallback.
     content = content.replace('copy_command "pbcopy"\n', '')
     if shutil.which("clip.exe", path=tool_env()["PATH"]):
@@ -75,8 +76,6 @@ def zellij_config_content(system=None):
 
 
 def zellij_config():
-    if sys.platform == "darwin":
-        return ROOT / "config/zellij/config.kdl"
     config, _, _ = paths()
     target = config / "zellij/platform.kdl"
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)

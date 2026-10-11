@@ -24,6 +24,16 @@ pane name="MY TOOL" command="my-tool" start_suspended=true {
 
 Use a `command` plus separate `args` for executable arguments. No shell evaluation is performed by the launcher. If shell syntax is necessary, choose it explicitly with a shell command and review the script as ordinary code. Validate changes with `scripts/validate.sh`; saved custom layouts can be checked with `zellij --config config/zellij/config.kdl --layout "/absolute/path/to/layout.kdl" setup --check`.
 
+## Pane titles
+
+Built-in templates have no fixed pane names. `bin/cc-shell` supplies scoped zsh/bash title hooks to new shell panes, including native keyboard splits. Idle titles show the shell; running commands show their first command name, without arguments. Apps may replace that title themselves. Pipelines, shell functions, and wrappers are labeled by the command entered, rather than by polling every descendant process.
+
+Zsh's temporary startup shim immediately restores the original `ZDOTDIR` and sources the original `.zshenv`; subsequent profile/rc/login files load normally. It installs additive `precmd`/`preexec` hooks at the first prompt. Bash uses a private rc file that sources your `.bashrc`, retains `PROMPT_COMMAND`, and adds command tracking only if no DEBUG trap exists. Neither edits global startup files. Other shells are passed through with their own title integration.
+
+For an existing shell, `command-center run shell` clears its fixed name and starts the scoped shell. To retain a fixed title, use `command-center pane TOOL --name "NAME"` or native `zellij action rename-pane "NAME"`. To clear it, use `command-center titles` or `zellij action rename-pane ""`. Clearing all terminal names with `command-center titles --all` first backs up the current native layout into the private saved-layout directory. It does not replace saved layouts or restart commands; existing shell processes still need the scoped shell command to load new hooks.
+
+Removing the title integration is reversible: use an ordinary shell or revert the repository update. Normal terminals remain unaffected. New-session configuration is rendered into the private `zellij/platform.kdl` on both macOS and Linux so the scoped shell path remains correct after cloning elsewhere. Raw repository config is a source template; use the launcher for the complete integration.
+
 ## Tool preferences
 
 Editable local defaults are copied once into `~/.config/command-center/`. Changing the repository defaults does not overwrite those local files. The normal mapping is:

@@ -128,6 +128,8 @@ if 'list-sessions' in sys.argv:
     print(os.environ.get('CC_TEST_SESSIONS', ''))
 elif 'dump-layout' in sys.argv:
     print('layout { pane; }')
+elif 'list-panes' in sys.argv:
+    print(os.environ.get('CC_TEST_PANES', '[]'))
 ''')
         fake.chmod(0o755)
         self.env = dict(os.environ, COMMAND_CENTER_HOME=str(self.base / "state"),
@@ -202,11 +204,27 @@ sys.exit(7)
         result = self.launch("pane", "btop", "--compact", "--direction", "down")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls()[-1][-2:], ["btop", "--compact"])
+        self.assertNotIn("--name", self.calls()[-1])
         self.assertEqual((config / "btop.conf").read_text(), 'shown_boxes = "mem net"\n')
         self.assertTrue((config / "btop-compact.conf").exists())
         result = self.launch("pane", "newsboat", "--compact")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("supported for btop", result.stderr)
+
+    def test_clear_all_titles_backs_up_layout_and_skips_plugins(self):
+        self.env["ZELLIJ"] = "1"
+        self.env["CC_TEST_PANES"] = json.dumps([
+            {"id": 5, "is_plugin": False}, {"id": 9, "is_plugin": False},
+            {"id": 5, "is_plugin": True}])
+        result = subprocess.run([str(ROOT / "bin/command-center"), "titles", "--all"],
+                                env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rename_calls = [args for args in self.calls() if "rename-pane" in args]
+        self.assertEqual([args[-1] for args in rename_calls], ["terminal_5", "terminal_9"])
+        backups = list((self.base / "state/data/layouts").glob("before-auto-titles-*.kdl"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text(), "layout { pane; }\n")
+        self.assertEqual(self.calls()[0][-1], "dump-layout")
 
     def test_save_layout_never_overwrites_existing_template(self):
         self.env["ZELLIJ"] = "1"

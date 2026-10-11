@@ -9,18 +9,18 @@ layout {
     tab name="AGENTS" {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
-                pane name="HERMES" command="{{CC_PANEL}}" start_suspended=true focus=true {
+                pane command="{{CC_PANEL}}" start_suspended=true focus=true {
                     args "hermes"
                 }
-                pane name="OPENCODE" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "opencode"
                 }
             }
             pane split_direction="horizontal" {
-                pane name="PI" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "pi"
                 }
-                pane name="CODEX CLI" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "codex"
                 }
             }

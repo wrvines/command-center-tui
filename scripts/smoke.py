@@ -145,6 +145,28 @@ def main():
             os.write(master, b"printf 'CC_SMOKE_OK\\n'\r")
             wait_for(lambda: "CC_SMOKE_OK" in action("dump-screen"), "shell input after keyboard split")
             print("PASS: locked-mode input, leader shortcut, keyboard split")
+            def focused_title():
+                return next(pane["title"] for pane in json.loads(action("list-panes", "--json", "--all"))
+                            if pane.get("is_focused") and not pane.get("is_plugin"))
+            shell_name = Path(env.get("SHELL", "/bin/bash")).name
+            if shell_name in ("zsh", "bash"):
+                wait_for(lambda: focused_title() == shell_name, "idle shell title")
+                os.write(master, b"sleep 2\r")
+                wait_for(lambda: focused_title() == "sleep", "running command title")
+                wait_for(lambda: focused_title() == shell_name, "title returns to shell")
+                action("rename-pane", "MY PANEL")
+                os.write(master, b"sleep 1\r")
+                time.sleep(0.2)
+                assert focused_title() == "MY PANEL", "manual title should override automatic title"
+                time.sleep(1)
+                launcher("titles")
+                wait_for(lambda: focused_title() == shell_name, "clear fixed title")
+                action("rename-pane", "BACKUP TITLE")
+                launcher("titles", "--all")
+                backups = list((base / "state/data/layouts").glob("before-auto-titles-*.kdl"))
+                assert len(backups) == 1 and "BACKUP TITLE" in backups[0].read_text()
+                wait_for(lambda: focused_title() == shell_name, "clear all fixed titles")
+                print("PASS: automatic command titles, idle reset, manual override, fixed-title clearing")
             action("resize", "increase", "left")
             action("move-pane", "left")
             action("toggle-pane-embed-or-floating")
@@ -205,8 +227,10 @@ def main():
             wait_for(lambda: "cpu" in action("dump-screen").lower(), "compact SYSTEM monitor")
             screen = action("dump-screen")
             assert "Terminal size too small" not in screen, screen
-            layout = action("dump-layout")
-            assert "DIAGNOSTICS" in layout and "SYSTEM SHELL" in layout, layout
+            panes = json.loads(action("list-panes", "--json", "--all"))
+            new_tab_position = max(pane["tab_position"] for pane in panes)
+            terminals = [pane for pane in panes if pane["tab_position"] == new_tab_position and not pane.get("is_plugin")]
+            assert len(terminals) == 3, [(pane["title"], pane["tab_position"]) for pane in terminals]
             print("PASS: compact SYSTEM monitor and two lower shells render in a 100×30 terminal")
             action("close-tab")
             fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))

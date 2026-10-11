@@ -1,0 +1,27 @@
+# Use normal interactive bash preferences; keep any existing DEBUG trap authoritative.
+[[ -r "$HOME/.bashrc" ]] && source "$HOME/.bashrc"
+if [[ -n ${ZELLIJ:-} && $- == *i* ]]; then
+    _cc_title_prompt() {
+        local previous=$?
+        builtin printf '\033]2;bash\007'
+        _cc_title_at_prompt=1
+        return "$previous"
+    }
+    _cc_title_command() {
+        [[ ${_cc_title_at_prompt:-0} == 1 && $1 != _cc_* ]] || return 0
+        _cc_title_at_prompt=0
+        local label=${1%%[[:space:]]*}
+        label=${label##*/}
+        label=${label//[[:cntrl:]]/}
+        builtin printf '\033]2;%s\007' "${label:0:80}"
+    }
+    if [[ -z $(trap -p DEBUG) ]]; then
+        trap '_cc_title_command "$BASH_COMMAND"' DEBUG
+    fi
+    # Bash 5.1+ supports arrays; older bash treats PROMPT_COMMAND as a string.
+    if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == 'declare -a '* ]]; then
+        PROMPT_COMMAND+=(_cc_title_prompt)
+    else
+        PROMPT_COMMAND="${PROMPT_COMMAND:-}"$'\n''_cc_title_prompt'
+    fi
+fi

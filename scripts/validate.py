@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate configurations and behavior without changing the user's setup."""
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -23,8 +24,12 @@ def main():
         for source in folder.iterdir():
             if source.is_file() and (source.suffix == ".py" or source.name in ("command-center", "cc-weather")):
                 compile(source.read_text(), str(source), "exec")
-    for shell in [ROOT / "bin/cc-panel", *ROOT.glob("*.sh"), *(ROOT / "scripts").glob("*.sh")]:
+    for shell in [ROOT / "bin/cc-panel", ROOT / "bin/cc-shell", ROOT / "config/shell/bashrc",
+                  *ROOT.glob("*.sh"), *(ROOT / "scripts").glob("*.sh")]:
         run(["bash", "-n", str(shell)])
+    if shutil.which("zsh"):
+        for shell in (ROOT / "config/shell/titles.zsh", ROOT / "config/shell/zsh/.zshenv"):
+            run(["zsh", "-n", str(shell)])
     with tempfile.TemporaryDirectory(prefix="cc-platform-") as temp:
         for system in ("darwin", "linux"):
             platform_config = Path(temp) / (system + ".kdl")

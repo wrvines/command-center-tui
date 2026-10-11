@@ -8,13 +8,13 @@ layout {
     }
     tab name="DEV" {
         pane split_direction="vertical" {
-            pane name="CODE / SHELL" size="60%" focus=true
+            pane size="60%" focus=true
             pane split_direction="horizontal" {
-                pane name="GIT" command="{{CC_PANEL}}" start_suspended=true {
+                pane command="{{CC_PANEL}}" start_suspended=true {
                     args "lazygit"
                 }
-                pane name="DEV OUTPUT"
-                pane name="SHELL"
+                pane
+                pane
             }
         }
     }
