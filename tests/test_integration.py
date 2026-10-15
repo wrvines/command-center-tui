@@ -175,6 +175,29 @@ elif 'list-panes' in sys.argv:
         self.assertIn("Already inside", result.stderr)
         self.assertFalse(self.log.exists())
 
+    def test_theme_selection_uses_separate_config_and_preserves_preferences(self):
+        config = self.base / "state/config"
+        (config / "zellij").mkdir(parents=True)
+        default = config / "zellij/platform.kdl"
+        default.write_text("// existing default runtime config\n")
+        (config / "btop.conf").write_text("user monitor preferences\n")
+        result = self.launch("--theme", "oh-my-pi", "--session", "theme-preview")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        argv = self.calls()[-1]
+        selected = Path(argv[argv.index("--config") + 1])
+        self.assertEqual(selected, (config / "zellij/platform-oh-my-pi.kdl").resolve())
+        self.assertIn('theme "oh-my-pi"', selected.read_text())
+        self.assertIn("frame_unselected", selected.read_text())
+        self.assertEqual(default.read_text(), "// existing default runtime config\n")
+        self.assertEqual((config / "btop.conf").read_text(), "user monitor preferences\n")
+        self.assertEqual(argv[argv.index("--config-dir") + 1], str((config / "zellij").resolve()))
+
+    def test_unknown_theme_is_rejected_before_runtime_changes(self):
+        result = self.launch("--theme", "../unknown")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.log.exists())
+        self.assertFalse((self.base / "state").exists())
+
     def test_run_newsboat_in_current_pane_uses_scoped_feeds_and_forwards_arguments(self):
         fake = self.base / "tools/newsboat"
         fake.write_text('''#!/usr/bin/env python3

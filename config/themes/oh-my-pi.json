@@ -1,0 +1,19 @@
+{
+  "name": "oh-my-pi",
+  "inspiration": "https://github.com/can1357/oh-my-pi/blob/main/packages/tui/src/theme/defaults/dark-terminal.json",
+  "roles": {
+    "background": "#050505",
+    "foreground": "#cccccc",
+    "primary": "#00ff00",
+    "secondary": "#00aaff",
+    "cyan": "#00ffcc",
+    "error": "#ff0000",
+    "warning": "#ffff00",
+    "muted": "#666666",
+    "border": "#333333"
+  },
+  "ansi": [
+    "background", "error", "primary", "warning", "secondary", "secondary", "cyan", "foreground",
+    "muted", "error", "primary", "warning", "secondary", "secondary", "cyan", "foreground"
+  ]
+}

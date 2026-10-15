@@ -195,7 +195,17 @@ Each workspace gets its own default session name. Repeating a command reconnects
 
 These are starting arrangements. Add, close, move, resize, or float panels freely. Automatic rearrangement is disabled. Logs and services open to shells so you can choose your own project commands; no builds or services start automatically.
 
-On the original Mac, the existing **GitHub Dark High Contrast** theme remains in Ghostty. Zellij, btop, and Lazygit use a matching palette, and Newsboat uses terminal colors. The managed Ghostty include adds modest padding and does not change the startup command, font, or theme. Fresh machines retain their own terminal theme.
+On the original Mac, the existing **GitHub Dark High Contrast** theme remains the default in Ghostty. Zellij, btop, and Lazygit use a matching baseline palette, and Newsboat uses terminal colors. The managed Ghostty include adds modest padding and does not change the startup command, font, or theme. Fresh machines retain their own terminal theme.
+
+### Optional Oh My Pi colors
+
+The opt-in **OhMyPi-DarkTerminal** Ghostty theme and **oh-my-pi** Zellij theme share one semantic palette: `#050505` background, `#cccccc` text, green focus, blue accents, and cyan highlights. Review [theme activation](docs/themes.md) before changing live settings. From an ordinary terminal, try Zellij in a previously unused session:
+
+```sh
+command-center --theme oh-my-pi --session theme-preview
+```
+
+Ghostty theme selection is a separate reviewed step on the Mac. The Debian Lenovo needs remote terminfo and app settings, not Ghostty. Existing tool preferences stay intact; explicit btop/Lazygit colors need future adapters to fully match. The [theme guide](docs/themes.md) includes Mac preview, installation, rollback, Debian SSH setup, and extension instructions. The [customization roadmap](docs/roadmap.md) records future app adapters, theme switching, workspace profiles, and multiple-monitor plans.
 
 ## Automatic pane titles
 
@@ -437,6 +447,8 @@ The README and [agent guide](agent.md) describe the current implementation. [Val
 bin/                 launch, panel, and weather helpers
 lib/                 shared path, preference, and layout rendering helpers
 config/ghostty/      small managed include
+config/themes/       centralized semantic theme palette
+config/ghostty/themes/ generated optional Ghostty colors
 config/zellij/       keyboard/theme config and six reusable KDL layouts
 config/shell/        scoped automatic-title integration for zsh and bash
 config/btop/         default config and theme

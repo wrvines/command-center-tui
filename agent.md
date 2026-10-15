@@ -16,6 +16,7 @@ This lowercase `agent.md` is the requested human-readable maintenance guide. The
 - macOS 27.0.1, Apple Silicon; shell `/bin/zsh`; Homebrew `/opt/homebrew`.
 - Ghostty 1.3.1 already exists in `/Applications/Ghostty.app`.
 - Ghostty theme: GitHub Dark High Contrast. Preserve it as the initial design baseline.
+- Optional theme milestone (October 14, 2026): `config/themes/oh-my-pi.json` is the authoritative user palette inspired by Oh My Pi `dark-terminal`. Generate Ghostty `OhMyPi-DarkTerminal` and Zellij `oh-my-pi` with `scripts/themes.py`; keep generated files in sync. `--theme oh-my-pi` selects a separate scoped config for new sessions. Preserve the baseline, existing sessions and app preferences; do not activate Ghostty or modify live settings without user review. See `docs/themes.md` and `docs/roadmap.md` for decisions, activation/rollback, Debian terminfo and planned app adapters/theme switching.
 - Existing Hermes command: `~/.local/bin/hermes`. Reuse its existing installation.
 - Installed core versions: Zellij 0.45.1, btop 1.4.7, Newsboat 2.45.0, Lazygit 0.66.1.
 - Existing coding agents: OpenCode 2.0.26, Pi 0.85.1, Codex CLI 0.162.0-alpha.17.2. OpenCode migrated through its official Homebrew major upgrader; maintain `anomalyco/tap/opencode-v2`, which provides the same `opencode` command.

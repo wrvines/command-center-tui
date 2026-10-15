@@ -45,7 +45,13 @@ Editable local defaults are copied once into `~/.config/command-center/`. Changi
 - `newsboat.conf`: feed refresh and Newsboat appearance.
 - `lazygit.yml`: Git UI appearance and behavior.
 
-The btop theme file is under `config/btop/themes/`. Zellij's theme and keyboard settings are under `config/zellij/config.kdl`. Restart a session to reliably apply startup-only Zellij changes. The Ghostty include changes padding; your original theme and font remain in the existing Ghostty config.
+The btop theme file is under `config/btop/themes/`. Zellij's baseline theme and keyboard settings are under `config/zellij/config.kdl`. Use a new session to reliably apply startup-only Zellij changes. The Ghostty include changes padding; your original theme and font remain in the existing Ghostty config.
+
+## Shared theme and future profiles
+
+`config/themes/oh-my-pi.json` defines the opt-in nine-color palette; `python3 -B scripts/themes.py` renders the Ghostty `OhMyPi-DarkTerminal` and Zellij `oh-my-pi` adapters. `command-center --theme oh-my-pi --session NEW_NAME` uses a separate scoped Zellij config and preserves the default palette. This selector does not change terminal settings or existing application preferences.
+
+See [themes](themes.md) for review-first activation on macOS, Debian/SSH terminal capabilities, rollback, and adding app adapters. [The roadmap](roadmap.md) connects this palette to future theme switching, workspace profiles, the application launcher, and multiple-monitor customization. Persistent selection and automatic switching across apps are planned, not implemented.
 
 Keep credentials in each tool's existing authentication mechanism. Do not put API keys in layouts, launcher arguments, tracked preferences, or feed examples. Coding agents retain their own model choices and authentication.
 

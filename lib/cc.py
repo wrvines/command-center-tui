@@ -62,10 +62,15 @@ def seed():
     return config, data, cache
 
 
-def zellij_config_content(system=None):
+def zellij_config_content(system=None, theme="command-center"):
+    if theme not in ("command-center", "oh-my-pi"):
+        raise ValueError("Unknown command-center theme: " + theme)
     source = ROOT / "config/zellij/config.kdl"
     content = source.read_text().replace('default_shell "/bin/zsh"',
                                          'default_shell ' + json.dumps(str(ROOT / "bin/cc-shell")))
+    if theme == "oh-my-pi":
+        content = content.replace('theme "command-center"', 'theme "oh-my-pi"')
+        content += "\n" + (ROOT / "config/zellij/themes/oh-my-pi.kdl").read_text()
     if (system or sys.platform) == "darwin":
         return content
     # Native OSC 52 clipboard support is the portable fallback.
@@ -75,11 +80,12 @@ def zellij_config_content(system=None):
     return content
 
 
-def zellij_config():
+def zellij_config(theme="command-center"):
+    content = zellij_config_content(theme=theme)
     config, _, _ = paths()
-    target = config / "zellij/platform.kdl"
+    filename = "platform.kdl" if theme == "command-center" else "platform-oh-my-pi.kdl"
+    target = config / "zellij" / filename
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    content = zellij_config_content()
     if not target.exists() or target.read_text() != content:
         import tempfile
         with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as handle:

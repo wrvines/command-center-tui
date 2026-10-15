@@ -22,6 +22,8 @@ def parser():
     p = argparse.ArgumentParser(description="An optional Zellij workspace; Ghostty stays a normal terminal.")
     p.add_argument("--project", type=Path, help="Working directory for a NEW session")
     p.add_argument("--session", help="Named session (default: command-center, or command-center-WORKSPACE)")
+    p.add_argument("--theme", choices=("command-center", "oh-my-pi"), default="command-center",
+                   help="Zellij theme for a NEW session; Ghostty and app preferences are separate")
     group = p.add_mutually_exclusive_group()
     group.add_argument("--workspace", choices=WORKSPACES, help="Launch one workspace in its own session")
     group.add_argument("--layout", help="Built-in or saved layout for a NEW session")
@@ -60,14 +62,14 @@ def directory(path):
     return value
 
 
-def zellij():
+def zellij(theme="command-center"):
     executable = shutil.which("zellij", path=tool_env()["PATH"])
     if not executable:
         raise ValueError("Zellij is missing. Run ./install.sh, or install Zellij 0.45.1+ with your package manager")
     # Zellij 0.45.1 needs a config-dir to resolve absolute serialized layout paths
     # during resurrection, even when its configuration was supplied explicitly.
     config, _, _ = paths()
-    return [executable, "--config-dir", str(config / "zellij"), "--config", str(zellij_config())]
+    return [executable, "--config-dir", str(config / "zellij"), "--config", str(zellij_config(theme))]
 
 
 def inside():
@@ -100,7 +102,7 @@ def main():
         print(f"\nPreferences: {config / 'preferences.json'}\nFeeds:       {config / 'feeds'}\nLayouts:     {data / 'layouts'}\nCache:       {cache}")
         print("Weather:     " + str(preferences().get("weather_location", "not set")))
         if not missing:
-            result = subprocess.run(zellij() + ["setup", "--check"], env=env, capture_output=True, text=True)
+            result = subprocess.run(zellij(args.theme) + ["setup", "--check"], env=env, capture_output=True, text=True)
             if result.returncode:
                 print(result.stdout + result.stderr, file=sys.stderr)
                 return 1
@@ -194,7 +196,7 @@ def main():
     project = directory(args.project)
     name = valid_name(args.session or ("command-center-" + args.workspace if args.workspace else "command-center"))
     layout_name = args.layout or args.workspace or "command-center"
-    command = zellij()
+    command = zellij(args.theme)
     seed()
     # Passing a layout while attaching would add tabs. Only new sessions receive a layout.
     listed = subprocess.run(command + ["list-sessions", "--no-formatting", "--short"],

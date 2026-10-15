@@ -38,6 +38,8 @@ For another terminal, or a headless Linux host:
 ./install.sh --no-ghostty
 ```
 
+For the MacBook Air → SSH → Debian Lenovo setup, Ghostty stays on the Mac. On Debian with compatible tools already installed, combine `--no-dependencies --no-ghostty` (review with `--dry-run` first). Install terminal capability metadata only if the remote host lacks the advertised terminfo entry. See [unified theme installation](themes.md#debian-lenovo-over-ssh) for the `oh-my-pi` Zellij selector, Mac Ghostty activation, and remote checks. The main installer does not activate the optional theme or replace private app colors.
+
 For a fresh Mac that also needs Ghostty:
 
 ```sh

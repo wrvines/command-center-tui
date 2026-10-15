@@ -20,6 +20,7 @@ def run(command, **kwargs):
 
 
 def main():
+    run([sys.executable, "-B", str(ROOT / "scripts/themes.py"), "--check"])
     for folder in (ROOT / "bin", ROOT / "lib", ROOT / "scripts", ROOT / "tests"):
         for source in folder.iterdir():
             if source.is_file() and (source.suffix == ".py" or source.name in ("command-center", "cc-weather")):
@@ -32,20 +33,26 @@ def main():
             run(["zsh", "-n", str(shell)])
     with tempfile.TemporaryDirectory(prefix="cc-platform-") as temp:
         for system in ("darwin", "linux"):
-            platform_config = Path(temp) / (system + ".kdl")
-            platform_config.write_text(zellij_config_content(system))
-            run(["zellij", "--config", str(platform_config), "setup", "--check"])
-            print("Platform config valid: " + system)
+            for theme in ("command-center", "oh-my-pi"):
+                platform_config = Path(temp) / (system + "-" + theme + ".kdl")
+                platform_config.write_text(zellij_config_content(system, theme))
+                run(["zellij", "--config", str(platform_config), "setup", "--check"])
+                print("Platform config valid: " + system + " / " + theme)
     config = ROOT / "config/zellij/config.kdl"
     for source in sorted((ROOT / "config/zellij/layouts").glob("*.kdl")):
         run(["zellij", "--config", str(config), "--layout-string",
              render_layout(source.stem, Path('/private/tmp/project with spaces and "quotes"')),
              "setup", "--check"])
         print("Layout valid: " + source.stem)
-    ghostty = Path("/Applications/Ghostty.app/Contents/MacOS/ghostty")
-    if ghostty.exists():
-        run([str(ghostty), "+validate-config", "--config-file=" + str(ROOT / "config/ghostty/command-center.ghostty")])
-        print("Ghostty include valid")
+    ghostty = shutil.which("ghostty")
+    if not ghostty and Path("/Applications/Ghostty.app/Contents/MacOS/ghostty").exists():
+        ghostty = "/Applications/Ghostty.app/Contents/MacOS/ghostty"
+    if ghostty:
+        for source in ("config/ghostty/command-center.ghostty", "config/ghostty/themes/OhMyPi-DarkTerminal"):
+            run([ghostty, "+validate-config", "--config-file=" + str(ROOT / source)])
+            print("Ghostty config valid: " + source)
+    else:
+        print("Ghostty checks skipped: not installed on this host (normal for remote Debian)")
     # Export to OPML loads Newsboat's config/feed list but performs no feed requests.
     with tempfile.TemporaryDirectory(prefix="cc-newsboat-") as temp:
         run(["newsboat", "-C", str(ROOT / "config/newsboat/config"), "-u",

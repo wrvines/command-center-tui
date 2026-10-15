@@ -1,5 +1,18 @@
 # Validation record
 
+## Optional unified theme — October 14, 2026
+
+Verified locally on the original Apple Silicon Mac with **Ghostty 1.3.1** and **Zellij 0.45.1**, rechecked through their installed binaries. The existing baseline passed before implementation.
+
+- `scripts/validate.sh` passes all **25 behavior tests**, Bash/zsh/Python syntax checks, six layout checks, and native Newsboat config/feed parsing. Theme regression tests verify that the opt-in launcher uses a separate scoped file, retains the resurrection config-dir, preserves the default runtime file and private monitor preferences, and rejects unknown theme names before writing runtime state.
+- `python3 -B scripts/themes.py --check` verifies generated Ghostty/Zellij adapters against the centralized JSON without writing or installing them; the full validator runs this check too.
+- Installed Zellij parses both `command-center` and `oh-my-pi` configurations for macOS and Linux through `setup --check`, including the theme's explicit UI component definitions. Linux checks here use Linux-rendered configuration with the Mac binary; they are not a Debian runtime test.
+- Installed Ghostty accepts both the unchanged padding include and the complete `OhMyPi-DarkTerminal` adapter through `+validate-config --config-file=…` with exit status 0. A disposable malformed-color config returns nonzero. Some direct CLI runs emit `SentryInitFailed` from Ghostty; syntax-check success is distinguished by exit status. `+show-config` with custom arguments did not produce a usable resolved-color dump in this environment, so no visual or resolved-output claim is made from it.
+- `git diff --check` passes. Standards and requirement reviews found no actionable issues.
+- Live Ghostty `config` / `config.ghostty`, global Zellij `config.kdl`, and scoped baseline `platform.kdl` have identical SHA-256 hashes before and after this work. No installer, live theme selection, session reset, remote SSH command, or profile edit was performed. Existing application preferences were not migrated.
+
+The user subsequently confirmed that the theme worked in the regular terminal and in a new themed command-center session. This is user-reported visual verification; the agent did not inspect a native Ghostty window. Color perception across displays, actual SSH/terminfo behavior on the Debian Lenovo, and existing-session theme reload remain untested. Review [activation and rollback](themes.md) before trying the theme. Full/compact btop and Lazygit still use their existing explicit palettes; future adapters and persistent switching are recorded in [the roadmap](roadmap.md).
+
 Validated on October 11, 2026, on macOS 27.0.1 / Apple Silicon.
 
 ## Completed
