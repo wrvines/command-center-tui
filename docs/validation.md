@@ -1,5 +1,11 @@
 # Validation record
 
+## Source update command — October 22, 2026
+
+`command-center update` passed seven tests against disposable local bare Git remotes: fast-forward through an installed symlink from an unrelated directory (checkout path with spaces, active Zellij environment, private settings preserved), already-current checkout, tracked edits/untracked files, divergent history, detached HEAD/missing upstream, unreachable remote, and a source copy nested in another repository. No pull was performed against the development checkout or GitHub.
+
+The full behavior suite ran 40 tests successfully, with two optional zsh tests skipped because zsh is absent. `git diff --check` passed. `scripts/validate.sh` passed its theme, Python, and Bash checks before stopping because Zellij is not installed on this host; native Zellij/Ghostty/Newsboat configuration and real terminal checks were not completed here.
+
 ## Optional unified theme — October 14, 2026
 
 Verified locally on the original Apple Silicon Mac with **Ghostty 1.3.1** and **Zellij 0.45.1**, rechecked through their installed binaries. The existing baseline passed before implementation.

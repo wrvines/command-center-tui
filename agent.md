@@ -36,6 +36,8 @@ Panel counts and arrangements belong to the user. Layouts are starting templates
 
 This shortcut is shared by macOS, Linux, and Windows/WSL 2 through the same launcher. Windows users run it inside their installed Linux distro, using `~/.local/bin/command-center reset` when needed. Keep installer completion messages and platform update instructions consistent; do not imply native PowerShell runtime support.
 
+`command-center update` (also `ccenter update`) pulls the launcher's permanent checkout from any working directory using its configured branch upstream and a fast-forward-only pull. Require a clean tree including untracked files, an attached branch, and an upstream; never auto-stash, merge, or rebase local work. This is a source-only update. Preserve private settings and sessions; integration refresh/validation remains an explicit `./install.sh --no-dependencies` from the checkout. Test against disposable local remotes rather than pulling into the working source tree.
+
 Keep expensive commands suspended until the user starts them. Hidden panes can still consume resources. Use native Zellij facilities for floating panels, navigation, layout export, and resurrection. Keep bundled plugins and locked mode to pass coding-agent shortcuts through. DEV prioritizes coding-agent and shell panes rather than an editor. Do not alter provider settings or authentication. Zellij 0.45.1 requires the explicit scoped config-dir supplied by the launcher to restore cached layouts on this Mac; preserve that alongside the explicit config file.
 
 ## Configuration ownership

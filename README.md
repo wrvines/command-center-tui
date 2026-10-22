@@ -12,6 +12,7 @@ The implementation uses small Python standard-library and Bash integration scrip
 | --- | --- |
 | Search installed apps or choose a tool catalog | **Ctrl+g → a**, or `command-center apps` |
 | Browse/search the four catalogs directly | **`command-center catalogs`** |
+| Pull the latest source updates from GitHub | **`command-center update`** |
 | Return to Ghostty's ordinary shell; keep tools running | **Ctrl+g → d**, or `command-center detach` from a shell pane |
 | Fully quit Zellij and stop its running tools | **Ctrl+g → Ctrl+q** |
 | Reconnect to the default command center | `command-center` from an ordinary terminal |
@@ -434,13 +435,23 @@ Yazi and lazydocker are optional and currently absent. Container use also needs 
 
 ### Update an existing installation
 
-From the permanent checkout on macOS, Linux, or inside WSL:
+From any directory on macOS, Linux, or inside WSL:
 
 ```sh
-git pull --ff-only
-./scripts/validate.sh
+command-center update
+# Short equivalent:
+ccenter update
+```
+
+This pulls the permanent checkout's configured upstream with `git pull --no-rebase --ff-only`. It requires a clean checkout (including no untracked files), an attached branch, and a configured upstream. Local changes and diverged history stop the update; nothing is automatically stashed, merged, or rebased. Git/network/authentication errors are reported normally. Private settings, installed packages, and running sessions are preserved. The launcher links use updated source immediately; updated layouts apply to new sessions.
+
+The command updates source only. To validate and refresh installation integrations afterward, run from the permanent checkout:
+
+```sh
 ./install.sh --no-dependencies
 ```
+
+The installer includes validation. For an older checkout without the update command, first run `git pull --ff-only` there.
 
 For a Git for Windows checkout, run these from PowerShell instead:
 

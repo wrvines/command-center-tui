@@ -124,10 +124,19 @@ AI agents, Neovim, Yazi, lazydocker, and a container engine are not installed au
 For a checkout on macOS, Linux, or inside WSL:
 
 ```sh
-git pull --ff-only
-./scripts/validate.sh
+command-center update
+# Or: ccenter update
+```
+
+Run this from any directory, including a command-center shell pane. It locates the permanent source checkout through the installed launcher link and pulls that branch's configured upstream using `git pull --no-rebase --ff-only`. Git must be installed and able to reach/authenticate with the remote. It refuses tracked edits, staged changes, untracked files, detached HEAD, missing upstream, and divergent history. Commit/stash local work or move untracked files yourself before retrying; the updater does not discard work or create merge commits.
+
+This updates source only, without installing packages or changing private settings. Launcher links immediately use the new source. To validate and refresh installation integrations, run from the permanent checkout:
+
+```sh
 ./install.sh --no-dependencies
 ```
+
+The installer includes validation. On an older installation that does not yet recognize `update`, bootstrap with `git pull --ff-only` from the checkout. Windows users run `~/.local/bin/command-center update` inside the installed WSL distro if the launcher is not on PATH. For a Git for Windows checkout, use the PowerShell workflow below instead.
 
 Changes to tracked layouts apply to new sessions. Existing sessions keep their arrangement; private preferences are never overwritten. Keep local code changes on a branch or commit them before pulling. Avoid moving or deleting the checkout while installed; uninstall first if you need to relocate it.
 

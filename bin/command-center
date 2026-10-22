@@ -29,6 +29,7 @@ def parser():
     group.add_argument("--layout", help="Built-in or saved layout for a NEW session")
     sub = p.add_subparsers(dest="action")
     sub.add_parser("doctor", help="Check installed tools and settings")
+    sub.add_parser("update", help="Pull the checkout's upstream updates (clean tree, fast-forward only)")
     sub.add_parser("layouts", help="List built-in and saved layouts")
     sub.add_parser("reset", help="Launch or reattach to fresh-start (same as --session fresh-start)")
     apps = sub.add_parser("apps", help="Search configured installed apps and browse public catalogs")
@@ -89,6 +90,9 @@ def inside():
 
 def main():
     args = parser().parse_args()
+    if args.action == "update":
+        from cc_update import update
+        return update(ROOT)
     if args.action == "reset":
         args.session, args.workspace, args.layout = "fresh-start", None, None
     if args.action == "doctor":
