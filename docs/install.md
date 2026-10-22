@@ -24,7 +24,9 @@ cd command-center-tui
 command-center
 ```
 
-`install.sh` preflights ownership, installs missing Zellij/btop/Newsboat/Lazygit/curl/Git with Homebrew, checks Zellij is at least 0.45.1, validates configurations and fixture tests, then installs launcher links and a backed-up Ghostty include. Repeated installation preserves existing preferences and checks ownership. Existing outdated tools are not silently upgraded; update them with their package manager if version validation fails. Packages installed before a later validation failure remain installed; user integrations are applied only after validation passes.
+`install.sh` preflights ownership, installs missing Zellij/btop/Newsboat/Lazygit/curl/Git/fzf with Homebrew, checks Zellij is at least 0.45.1, validates configurations and fixture tests, then installs launcher links and a backed-up Ghostty include. Repeated installation preserves existing preferences and checks ownership. Existing outdated tools are not silently upgraded; update them with their package manager if version validation fails. Packages installed before a later validation failure remain installed; user integrations are applied only after validation passes.
+
+Fzf powers the searchable app/catalog picker. After updating an existing installation, rerun the installer to add it if missing, or install it with your Linux package manager when using `--no-dependencies`. Run `command-center catalogs` on macOS/Linux, or `~/.local/bin/command-center catalogs` inside the installed WSL distro. See [catalog usage](catalogs.md) for source selection, caching, and Terminal Trove's recent-feed fallback.
 
 If your distribution already provides the core tools, including a sufficiently recent Zellij:
 

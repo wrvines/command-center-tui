@@ -31,6 +31,14 @@ def parser():
     sub.add_parser("doctor", help="Check installed tools and settings")
     sub.add_parser("layouts", help="List built-in and saved layouts")
     sub.add_parser("reset", help="Launch or reattach to fresh-start (same as --session fresh-start)")
+    apps = sub.add_parser("apps", help="Search configured installed apps and browse public catalogs")
+    apps.add_argument("--inline", action="store_true", help="Use this shell pane rather than a floating menu")
+    catalogs = sub.add_parser("catalogs", help="Choose and search a public tool catalog")
+    catalogs.add_argument("--source", choices=("terminal-trove", "awesome-tuis", "awesome-cli", "homebrew"))
+    catalogs.add_argument("--query", default="", help="Initial search text")
+    catalogs.add_argument("--refresh", action="store_true", help="Refresh the selected source's cache")
+    catalogs.add_argument("--list", action="store_true", help="Print sources or matching tools without fzf")
+    catalogs.add_argument("--inline", action="store_true", help="Use this shell pane rather than a floating menu")
     run = sub.add_parser("run", help="Run a configured tool in this terminal or the current shell pane")
     run.add_argument("tool", choices=TOOLS)
     run.add_argument("tool_args", nargs=argparse.REMAINDER, help="Arguments passed directly to the tool")
@@ -86,10 +94,10 @@ def main():
     if args.action == "doctor":
         env = tool_env()
         missing = []
-        for tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3",
+        for tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3", "fzf",
                      "hermes", "opencode", "pi", "codex", "yazi", "lazydocker", "docker"):
             executable = shutil.which(tool, path=env["PATH"])
-            label = "required" if tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3") else "optional"
+            label = "required" if tool in ("zellij", "btop", "newsboat", "lazygit", "curl", "python3", "fzf") else "optional"
             detail = executable or "not installed"
             if executable and tool in ("zellij", "btop", "newsboat", "lazygit"):
                 flag = "-v" if tool == "newsboat" else "--version"
@@ -114,6 +122,23 @@ def main():
             for path in sorted(folder.glob("*.kdl")):
                 print(f"{path.stem:24} {kind}")
         return 0
+    if args.action in ("apps", "catalogs"):
+        import cc_catalogs
+        listing = args.action == "catalogs" and args.list
+        if not listing and os.environ.get("ZELLIJ") and not args.inline:
+            forwarded = sys.argv[1:] + ["--inline"]
+            subprocess.run(inside() + ["action", "new-pane", "--floating", "--close-on-exit",
+                                      "--cwd", str(Path.cwd()), "--", str(ROOT / "bin/command-center"),
+                                      *forwarded], env=tool_env(), check=True)
+            return 0
+        if args.action == "apps":
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise ValueError("Open apps from an interactive terminal")
+            cc_catalogs.apps_menu()
+            return 0
+        if args.refresh and not args.source:
+            raise ValueError("Choose --source NAME when using --refresh")
+        return cc_catalogs.run_catalogs(args)
     if args.action == "weather":
         os.execve(str(ROOT / "bin/cc-weather"), ["cc-weather"] + (["--refresh"] if args.refresh else []), tool_env())
     if args.action == "run":

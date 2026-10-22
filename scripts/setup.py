@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 from cc import tool_env
 
-CORE = ("zellij", "btop", "newsboat", "lazygit", "curl", "git")
+CORE = ("zellij", "btop", "newsboat", "lazygit", "curl", "git", "fzf")
 
 
 def dependency_plan(env):
@@ -78,6 +78,7 @@ def main():
     subprocess.run(integration, env=env, check=True)
     print('Launch: command-center (or "$HOME/.local/bin/command-center" if it is not on PATH yet).')
     print("Starter workspace shortcut: command-center reset (equivalent to --session fresh-start; an existing session is reused).")
+    print("Apps/catalogs: command-center apps or command-center catalogs; inside Zellij use Ctrl-g, then a.")
     if sys.platform == "linux" and not args.no_ghostty:
         print("Install Ghostty separately using https://ghostty.org/docs/install/binary, or use your existing terminal.")
     print("AI agents are optional; install and authenticate each one separately. See docs/install.md.")

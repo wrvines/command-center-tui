@@ -30,5 +30,6 @@ function Invoke-CommandCenterWSL {
     if ($Script -eq "install.sh" -and $Options -notcontains "--dry-run") {
         Write-Host "Installed inside $Distro. Open that distro in Windows Terminal and run: ~/.local/bin/command-center"
         Write-Host "Starter workspace shortcut inside ${Distro}: ~/.local/bin/command-center reset (reuses fresh-start if it exists)."
+        Write-Host "App/catalog search inside ${Distro}: ~/.local/bin/command-center catalogs; inside Zellij use Ctrl-g, then a."
     }
 }

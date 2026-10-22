@@ -21,7 +21,7 @@ jobs:
             NONINTERACTIVE=1 bash /tmp/homebrew-install.sh
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           fi
-          brew install zellij btop newsboat lazygit
+          brew install zellij btop newsboat lazygit fzf
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
       - run: ./scripts/validate.sh
       - name: Small terminal tool check

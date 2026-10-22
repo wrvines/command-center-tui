@@ -40,6 +40,14 @@ ui {
 keybinds {
     normal {
         bind "d" { Detach; }
+        // Ctrl-g, then a: native floating app/catalog menu, closed when it exits.
+        bind "a" {
+            Run "{{CC_LAUNCHER}}" "apps" "--inline" {
+                floating true
+                close_on_exit true
+            }
+            SwitchToMode "Locked"
+        }
         bind "1" { GoToTab 1; SwitchToMode "Locked"; }
         bind "2" { GoToTab 2; SwitchToMode "Locked"; }
         bind "3" { GoToTab 3; SwitchToMode "Locked"; }

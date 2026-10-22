@@ -14,6 +14,7 @@ Ctrl+g toggles application input (locked mode) and Zellij controls (normal mode)
 
 | Purpose | Sequence |
 | --- | --- |
+| Open the searchable app / catalog menu | Ctrl+g, a |
 | Select the five starter tabs | Ctrl+g, then 1, 2, 3, 4, or 5 |
 | Focus a different panel | Ctrl+g, Ctrl+p, arrow keys, Enter |
 | Split right | Ctrl+g, Ctrl+p, r |
@@ -39,6 +40,8 @@ Linux uses Zellij's terminal clipboard protocol; WSL uses `clip.exe` when availa
 The stock Ctrl-mode shortcuts remain available. Single-action pane shortcuts such as split, close, fullscreen, and float return to locked mode automatically. Closing a panel ends its process. Detaching leaves the whole session running; opening a fresh Ghostty window still gives you an ordinary terminal.
 
 ## Add panels and workspaces
+
+Use `command-center apps` for the floating installed-app menu or `command-center catalogs` to choose between Terminal Trove, Awesome TUIs, Awesome CLI/TUI Apps, and Homebrew. Type to search within the selected catalog. Ctrl+R refreshes, Ctrl+P toggles the text preview, and Esc goes back. New tiled panes are the default for configured app launches, with floating/current-menu-pane options. `--inline` runs the picker in an existing shell pane. See [catalog usage](catalogs.md), including the limited recent-feed fallback if Terminal Trove blocks its full index.
 
 Run these inside a shell pane:
 

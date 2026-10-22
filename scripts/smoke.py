@@ -35,9 +35,13 @@ def main():
         def action(*args):
             result = subprocess.run(["zellij", "--config", str(CONFIG), "--session", SESSION, "action", *args],
                                     env=env, capture_output=True, text=True, timeout=10)
-            if result.returncode:
-                raise RuntimeError(result.stderr or result.stdout or "Zellij action failed")
-            return result.stdout
+            # This boolean query uses nonzero status for false (2 on this installed build).
+            false_query = (args == ("are-floating-panes-visible",) and result.returncode in (1, 2)
+                           and (result.stdout or result.stderr).strip() == "false")
+            if result.returncode and not false_query:
+                raise RuntimeError(f"Zellij action {args!r} failed ({result.returncode}): " +
+                                   (result.stderr or result.stdout or "no diagnostic"))
+            return "false" if false_query else result.stdout
 
         def start(*extra):
             for old_process, _, old_thread in children:
@@ -89,7 +93,7 @@ def main():
                 if test():
                     return
                 time.sleep(0.1)
-            raise RuntimeError("Failed: " + description)
+            raise RuntimeError("Failed: " + description + "\n" + action("dump-screen"))
 
         def launcher(*args):
             inside = dict(env, ZELLIJ="1", ZELLIJ_SESSION_NAME=SESSION)
@@ -138,6 +142,60 @@ def main():
                 assert name in names, names
             print("PASS: all five tabs render in a 160×50 terminal")
             wait_for(lambda: bool(json.loads(action("list-panes", "--json", "--all"))), "pane metadata ready")
+            # Real fzf and native shortcut, using only local catalog fixtures.
+            from cc_catalogs import load_catalog
+            load_catalog('awesome-tuis', cache_dir=base / 'state/cache/catalogs',
+                         fetch=lambda url: '## Dashboards\n'
+                                           '- [btop](https://github.com/aristocratos/btop) Resource monitor\n')
+            original_count = len(json.loads(action("list-panes", "--json", "--all")))
+            os.write(master, b"\x07a")
+            wait_for(lambda: "Configured installed apps" in action("dump-screen"), "app picker shortcut")
+            os.write(master, b"Browse catalogs")
+            time.sleep(0.2)  # Let fzf apply its asynchronous query before accepting.
+            os.write(master, b"\r")
+            wait_for(lambda: "Choose catalog" in action("dump-screen"), "catalog source picker")
+            catalog_screen = action("dump-screen")
+            for name in ("Terminal Trove", "Awesome TUIs", "Awesome CLI/TUI Apps", "Homebrew Formulae"):
+                assert name in catalog_screen, catalog_screen
+            os.write(master, b"Awesome TUIs")
+            time.sleep(0.2)
+            os.write(master, b"\r")
+            wait_for(lambda: "full index" in action("dump-screen"), "cached catalog results")
+            os.write(master, b"btop")
+            wait_for(lambda: "https://github.com/aristocratos/btop" in action("dump-screen"), "catalog text preview")
+            os.write(master, b"\r")
+            wait_for(lambda: "Open in new tiled pane" in action("dump-screen"), "installed app actions")
+            os.write(master, b"\r")
+            wait_for(lambda: "cpu" in action("dump-screen").lower(), "catalog launches configured btop")
+            wait_for(lambda: len(json.loads(action("list-panes", "--json", "--all"))) == original_count + 1,
+                     "temporary picker closes after launch")
+            assert action("are-floating-panes-visible").strip() == "false", "Default app launch should be tiled"
+            action("close-pane")
+            os.write(master, b"\x07a")
+            wait_for(lambda: "Configured installed apps" in action("dump-screen"), "reopen app picker")
+            os.write(master, b"\x1b")
+            wait_for(lambda: len(json.loads(action("list-panes", "--json", "--all"))) == original_count,
+                     "Esc closes picker without replacing the underlying shell")
+            print("PASS: native app-menu shortcut, all four catalogs, cached fuzzy search/preview, tiled launch, Esc")
+            for placement in ("Open floating", "Use menu pane"):
+                launcher("apps")
+                wait_for(lambda: "Configured installed apps" in action("dump-screen"), "CLI floating picker")
+                os.write(master, b"btop")
+                time.sleep(0.2)
+                os.write(master, b"\r")
+                wait_for(lambda: "Open in new tiled pane" in action("dump-screen"), "app placement menu")
+                os.write(master, placement.encode())
+                time.sleep(0.2)
+                os.write(master, b"\r")
+                wait_for(lambda: "cpu" in action("dump-screen").lower(), placement)
+                assert action("are-floating-panes-visible").strip() == "true"
+                if placement == "Use menu pane":
+                    action("write-chars", "q")
+                else:
+                    action("close-pane")
+                wait_for(lambda: len(json.loads(action("list-panes", "--json", "--all"))) == original_count,
+                         "alternative launch returns to original shell")
+            print("PASS: floating and menu-pane app launches preserve the underlying shell")
             resources(process.pid, "agents and monitors suspended")
             initial_layout = action("dump-layout")
             os.write(master, b"\x07\x10r")  # Ctrl-g, Ctrl-p, r: split right, return to Locked.

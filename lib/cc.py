@@ -68,6 +68,7 @@ def zellij_config_content(system=None, theme="command-center"):
     source = ROOT / "config/zellij/config.kdl"
     content = source.read_text().replace('default_shell "/bin/zsh"',
                                          'default_shell ' + json.dumps(str(ROOT / "bin/cc-shell")))
+    content = content.replace('"{{CC_LAUNCHER}}"', json.dumps(str(ROOT / "bin/command-center")))
     if theme == "oh-my-pi":
         content = content.replace('theme "command-center"', 'theme "oh-my-pi"')
         content += "\n" + (ROOT / "config/zellij/themes/oh-my-pi.kdl").read_text()

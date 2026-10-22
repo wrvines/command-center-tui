@@ -10,6 +10,8 @@ The implementation uses small Python standard-library and Bash integration scrip
 
 | What you want | What to do |
 | --- | --- |
+| Search installed apps or choose a tool catalog | **Ctrl+g → a**, or `command-center apps` |
+| Browse/search the four catalogs directly | **`command-center catalogs`** |
 | Return to Ghostty's ordinary shell; keep tools running | **Ctrl+g → d**, or `command-center detach` from a shell pane |
 | Fully quit Zellij and stop its running tools | **Ctrl+g → Ctrl+q** |
 | Reconnect to the default command center | `command-center` from an ordinary terminal |
@@ -85,6 +87,28 @@ command-center --workspace agents
 An existing named session keeps its directories and arrangement when you reconnect. `--project`, `--workspace`, and `--layout` choose initial settings for a new session; they do not reset a live one. The launcher restores exited sessions through Zellij's native resurrection.
 
 Panels for agents, monitoring, news, weather, and Git wait for Enter before starting. Your ordinary shell panels are immediately usable. Multiple normal Ghostty windows can remain open alongside the command center.
+
+## App menu and tool catalogs
+
+**Press Ctrl+g, then a** inside the command center to open the floating app menu. Choose **Browse catalogs…**, pick a source, then type to search:
+
+- **Terminal Trove** — terminal-tool discovery; recent-tools feed fallback when the full index is blocked.
+- **Awesome TUIs** — categorized interactive terminal applications.
+- **Awesome CLI/TUI Apps** — a broader categorized collection.
+- **Homebrew Formulae** — the general package catalog, including non-TUI tools and libraries.
+
+```sh
+command-center apps                  # Configured installed apps + catalog picker
+command-center catalogs              # Choose a catalog, then search
+command-center catalogs --source awesome-tuis --query monitor
+command-center catalogs --source homebrew --query terminal
+```
+
+Use **Enter** for details/actions, **Ctrl+P** for the text preview, **Ctrl+R** to refresh, and **Esc** to go back. Configured installed apps offer a **new tiled pane by default**, with floating or the menu's current pane as alternatives. To use an existing empty shell pane, run `command-center apps --inline` there and choose **Use menu pane**. Unfamiliar entries can be searched in Homebrew; installation shows the exact package command and requires a separate selection. Project pages open in a browser only when you choose that action.
+
+Results are cached for 24 hours. The menu labels stale results and Terminal Trove's limited recent-feed fallback; it does not present either as a fresh full catalog. The installed-app list recognizes the setup's known adapters rather than every executable on the machine. Arbitrary app registration and a saved-setup picker are planned; existing layout saving/restoration remains available.
+
+The menu uses **fzf**, now included in the installers. On an existing Mac, run `brew install fzf` if missing. Linux and Windows/WSL use the same menu; inside WSL use `~/.local/bin/command-center catalogs` if needed. For older sessions, the CLI commands work immediately; new sessions load the shortcut. See [catalog usage, sources, and limitations](docs/catalogs.md).
 
 ## Tool launch commands
 
@@ -252,6 +276,7 @@ Start in locked mode: shortcuts go to the application in the focused pane. Press
 
 | Action | Keys |
 | --- | --- |
+| Open app / catalog menu | Ctrl+g, then a |
 | Select tab 1–5 | Ctrl+g, then 1–5 |
 | Split right / below | Ctrl+g, Ctrl+p, then r / d |
 | Focus another pane | Ctrl+g, Ctrl+p, arrows; Enter to return to the application |
@@ -359,7 +384,7 @@ For a saved layout that should always wait before starting a tool in a new sessi
 
 ## Installation and configuration
 
-Core dependencies were installed with Homebrew on October 11, 2026:
+Initial core dependencies were installed with Homebrew on October 11, 2026; fzf was added for the app/catalog menu on October 21:
 
 | Tool | Verified version |
 | --- | --- |
@@ -368,6 +393,7 @@ Core dependencies were installed with Homebrew on October 11, 2026:
 | btop | 1.4.7 |
 | Newsboat | 2.45.0 |
 | Lazygit | 0.66.1 |
+| fzf | 0.74.5, added October 21, 2026 |
 | OpenCode | 2.0.26, upgraded through Homebrew |
 | Pi | 0.85.1, existing installation |
 | Codex CLI | 0.162.0-alpha.17.2, existing installation |
