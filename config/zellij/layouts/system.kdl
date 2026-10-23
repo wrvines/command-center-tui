@@ -8,11 +8,15 @@ layout {
     }
     tab name="SYSTEM" {
         pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
-            args "btop" "--compact"
+            args "apps"
         }
         pane split_direction="vertical" size="40%" {
-            pane
-            pane
+            pane command="{{CC_PANEL}}" start_suspended=true {
+                args "apps"
+            }
+            pane command="{{CC_PANEL}}" start_suspended=true {
+                args "apps"
+            }
         }
     }
 }

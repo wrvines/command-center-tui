@@ -4,7 +4,7 @@ Open Ghostty normally. It runs your ordinary zsh shell. Launch individual coding
 
 ## First launch
 
-DEV is selected first. The large pane is a shell in the directory from which you launched. Run your coding agent or project command there. To select AGENTS, press Ctrl+g, then 3. Its four panes are initially suspended: focus one and press Enter to start its tool.
+DEV is selected first. Every premade pane starts unassigned in your project directory, with a small Enter prompt. Press Enter to open the app picker, then choose an installed app to run in that same pane. Choose Shell or press Esc in the picker for an ordinary shell; Weather is also available. Apps return to a shell when they exit. To select AGENTS, press Ctrl+g, then 3; its four panes use the same picker. Existing sessions and saved layouts retain their commands and arrangement.
 
 The AGENTS tab is a convenient starter layout, not a limit of four agents. Open additional Hermes, OpenCode, Pi, or Codex panes using the commands below, or split a normal shell and run any CLI yourself. Every `hermes chat` invocation starts fresh; resuming an existing conversation is an explicit action.
 
@@ -33,7 +33,7 @@ Ctrl+g toggles application input (locked mode) and Zellij controls (normal mode)
 | Open native session manager | Ctrl+g, Ctrl+o, w; Ctrl+g to relock after closing it |
 | Return to your normal terminal | Ctrl+g, d |
 
-Enter finishes navigation and returns to locked mode. If the newly selected tool is suspended, press Enter again to start it. You can also select panes with the mouse. Hold Shift to bypass Zellij mouse handling for terminal selection when needed; copied Zellij selections use macOS `pbcopy`.
+Enter finishes navigation and returns to locked mode. If the newly selected starter pane is suspended, press Enter again to open its app picker. You can also select panes with the mouse. Hold Shift to bypass Zellij mouse handling for terminal selection when needed; copied Zellij selections use macOS `pbcopy`.
 
 Linux uses Zellij's terminal clipboard protocol; WSL uses `clip.exe` when available. The same launcher and controls work inside a WSL 2 distro opened in Windows Terminal. See [platform installation](install.md).
 
@@ -41,7 +41,7 @@ The stock Ctrl-mode shortcuts remain available. Single-action pane shortcuts suc
 
 ## Add panels and workspaces
 
-Use `command-center apps` for the floating installed-app menu or `command-center catalogs` to choose between Terminal Trove, Awesome TUIs, Awesome CLI/TUI Apps, and Homebrew. Type to search within the selected catalog. Ctrl+R refreshes, Ctrl+P toggles the text preview, and Esc goes back. New tiled panes are the default for configured app launches, with floating/current-menu-pane options. `--inline` runs the picker in an existing shell pane. See [catalog usage](catalogs.md), including the limited recent-feed fallback if Terminal Trove blocks its full index.
+Use `command-center apps` for the floating installed-app menu or `command-center catalogs` to choose between Terminal Trove, Awesome TUIs, Awesome CLI/TUI Apps, and Homebrew. Type to search within the selected catalog. Ctrl+R refreshes, Ctrl+P toggles the text preview, and Esc goes back. New tiled panes are the default for configured app launches, with floating/current-menu-pane options. When you type `command-center apps` in a shell inside Zellij, choose an app and **Open in current pane** to close the floating menu and run it where you typed the command. The app returns to that shell when it exits. The keyboard shortcut also offers **Open in current pane**, using the workspace pane behind the floating menu. Its previous shell/app stays available and returns when the selected app exits. `--inline` runs the picker in an existing shell pane. See [catalog usage](catalogs.md), including the limited recent-feed fallback if Terminal Trove blocks its full index.
 
 Run these inside a shell pane:
 
@@ -56,7 +56,7 @@ command-center add-workspace system
 command-center add-workspace news-weather --cwd "/path/to/project"
 ```
 
-`pane` starts the requested tool immediately because the command is your explicit choice. Template panes start suspended. Any program can run in a normal shell pane; convenient tool shortcuts do not limit customization.
+`pane` starts the requested tool immediately because the command is your explicit choice. Template panes start suspended and open an app picker on Enter; selecting an app fills that pane directly. `command-center apps --pick` opens the same direct-selection picker in an existing shell pane. Native split shortcuts still create ordinary shells. Any program can run in a normal shell pane; convenient tool shortcuts do not limit customization.
 
 Lazygit uses the current directory unless `--cwd` is supplied. A directory outside Git leaves a helpful shell. Optional Yazi or lazydocker panes also fall back to a shell when unavailable. Container tools never start an engine for you.
 

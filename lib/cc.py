@@ -140,6 +140,7 @@ def tool_env():
     env.update(CC_ROOT=str(ROOT), CC_CONFIG=str(config), CC_DATA=str(data),
                CC_CACHE=str(cache))
     extra = ("/opt/homebrew/bin", "/usr/local/bin", "/home/linuxbrew/.linuxbrew/bin",
-             str(Path.home() / ".linuxbrew/bin"), str(Path.home() / ".local/bin"))
+             str(Path.home() / ".linuxbrew/bin"), str(Path.home() / ".local/bin"),
+             str(Path.home() / ".cargo/bin"), str(Path.home() / "go/bin"))
     env["PATH"] = env.get("PATH", "") + os.pathsep + os.pathsep.join(extra)
     return env

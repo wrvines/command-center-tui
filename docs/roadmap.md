@@ -5,6 +5,7 @@
 - Five workspaces and reusable layouts; manual pane split, movement, resizing, floating and layout export.
 - Existing CLI launcher and on-demand application panes; normal shells remain available.
 - Fzf app picker and four independently searchable public catalogs, with bounded on-demand downloads, caching, and explicit Homebrew installation. Known installed adapters support tiled/floating/current-menu-pane launch. See [catalogs](catalogs.md).
+- Host-local installed-app discovery, saved argv launchers, custom search folders, Homebrew post-install registration, persistent hide/restore, and confirmed Homebrew or saved manual uninstall commands. See [app discovery](app-discovery.md).
 - Separate Ghostty windows/clients for multiple monitors, with saved Zellij arrangements. OS window positions are not saved by layouts.
 - Optional `oh-my-pi` theme: shared semantic JSON, generated Ghostty and Zellij adapters, and `command-center --theme oh-my-pi --session NEW_NAME`. Existing defaults remain the baseline.
 
@@ -14,7 +15,8 @@
 2. Add persistent theme preference and a theme-switching command only after defining backup, rollback, live-session and application reload behavior. Keep terminal selection separate from remote app settings; do not imply one flag recolors every process.
 3. Associate optional appearance choices with user workspace profiles and an application launcher, independently of pane geometry and saved working directories. Retain native Zellij layouts and keyboard management.
 4. Explore monitor-specific workspace profiles and window placement using supported platform facilities. Share the palette across windows without enforcing pane counts or resetting sessions.
-5. Add user-defined app registrations and a saved-setup picker to the app menu. Preserve native layouts and distinguish resuming a live session from reconstructing commands after exit. Source catalogs are discovery metadata, not executable launch recipes.
+5. Add a saved-setup picker to the app menu. Preserve native layouts and distinguish resuming a live session from reconstructing commands after exit. Source catalogs remain discovery metadata, not executable launch recipes.
+6. Research multi-host agent-usage aggregation after app discovery and removal are established. Start from separate local/remote abtop instances and assess supported collection/export interfaces; do not assume SSH combines process/session data or copy credentials/transcripts between hosts. No aggregation or remote installation is implemented by the current discovery work.
 
 ## Theme decision — October 14, 2026
 

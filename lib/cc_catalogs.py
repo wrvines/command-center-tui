@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
 from cc import ROOT, paths, tool_env
+from cc_apps import BUILTINS, PANEL_TOOLS, Registry
 
 SOURCES = {
     'terminal-trove': {
@@ -228,7 +229,7 @@ def picker_env():
     return env
 
 
-def choose(rows, prompt, header='', query='', preview=False, refresh=False):
+def choose(rows, prompt, header='', query='', preview=False, refresh=False, name_search=False):
     executable = shutil.which('fzf', path=tool_env()['PATH'])
     if not executable:
         raise ValueError('fzf is required for the menu. Install it with brew install fzf, or use catalogs --source NAME --list.')
@@ -241,6 +242,9 @@ def choose(rows, prompt, header='', query='', preview=False, refresh=False):
         command = [executable, '--layout=reverse', '--border=rounded', '--delimiter=\t', '--with-nth=2..', '--print-query',
                    '--prompt=' + prompt + '> ', '--header=' + header,
                    '--query=' + query, '--bind=ctrl-p:toggle-preview']
+        if name_search:
+            # --nth addresses the displayed fields after --with-nth hides the row index.
+            command += ['--exact', '--no-extended', '--ignore-case', '--nth=1']
         if preview:
             preview_command = shlex.join([sys.executable, '-B', str(Path(__file__).resolve()),
                                           '--preview', str(data_file)]) + ' {1}'
@@ -282,28 +286,29 @@ def preview_file(path, index):
         print('\nInstall command: brew install --formula ' + clean(row['formula'], 200))
 
 
-APP_TOOLS = {
-    'hermes': 'Hermes Agent', 'opencode': 'OpenCode', 'pi': 'Pi', 'codex': 'Codex CLI',
-    'btop': 'btop (compact)', 'newsboat': 'Newsboat', 'lazygit': 'Lazygit',
-    'yazi': 'Yazi', 'lazydocker': 'Lazydocker',
-}
+APP_TOOLS = BUILTINS
 
 
 def configured_app(row):
     name = row['name'].casefold()
     aliases = {'btop++': 'btop', 'hermes agent': 'hermes', 'codex cli': 'codex'}
     tool = aliases.get(name, name)
-    if tool in APP_TOOLS and shutil.which(tool, path=tool_env()['PATH']):
+    try:
+        Registry().resolve(tool)
         return tool
+    except ValueError:
+        pass
     return None
 
 
 def launch_app(tool, placement):
-    if tool not in APP_TOOLS:
-        raise ValueError('Unknown configured application')
+    registry = Registry()
+    app = registry.resolve(tool)
+    tool = app['tool']
     if placement == 'current':
-        command = [str(ROOT / 'bin/cc-panel'), tool] + (['--compact'] if tool == 'btop' else [])
-        os.execvpe(command[0], command, tool_env())
+        command = ([str(ROOT / 'bin/cc-panel'), tool] + (['--compact'] if tool == 'btop' else [])
+                   if app['builtin'] else app['argv'])
+        os.execvpe(command[0], command, registry.environment())
     if placement not in ('new', 'floating') or not os.environ.get('ZELLIJ'):
         raise ValueError('Open the command center first to launch a new or floating pane')
     command = [str(ROOT / 'bin/command-center'), 'pane', tool]
@@ -311,17 +316,57 @@ def launch_app(tool, placement):
         command.append('--compact')
     if placement == 'floating':
         command.append('--floating')
-    subprocess.run(command, env=tool_env(), check=True)
+    subprocess.run(command, env=registry.environment(), check=True)
 
 
-def app_actions(tool):
+def floating_menu_target():
+    """Find the focused workspace pane underneath this floating menu."""
+    if not os.environ.get('ZELLIJ') or not os.environ.get('ZELLIJ_PANE_ID'):
+        return None
+    pane_id = os.environ['ZELLIJ_PANE_ID'].removeprefix('terminal_')
+    if not pane_id.isdecimal():
+        raise ValueError('Cannot identify this menu pane')
+    zellij = shutil.which('zellij', path=tool_env()['PATH'])
+    if not zellij:
+        raise ValueError('Zellij is required to locate the workspace pane')
+    result = subprocess.run([zellij, 'action', 'list-panes', '--json', '--all'],
+                            env=tool_env(), capture_output=True, text=True, check=True, timeout=5)
+    panes = json.loads(result.stdout)
+    menu = next((pane for pane in panes if pane['id'] == int(pane_id) and not pane.get('is_plugin')), None)
+    if not menu:
+        raise ValueError('Cannot identify this menu pane')
+    if not menu.get('is_floating'):
+        return None
+    recorded = menu.get('terminal_command') or ''
+    prefix = str(ROOT / 'bin/command-center') + ' apps --inline'
+    if not (recorded == prefix or recorded.startswith(prefix + ' ')):
+        try:
+            command = shlex.split(recorded)
+        except ValueError:
+            command = []
+        if command[:3] != [str(ROOT / 'bin/command-center'), 'apps', '--inline']:
+            # An explicitly inline picker in a floating shell already owns its intended pane.
+            return None
+    targets = [pane for pane in panes if pane.get('tab_id') == menu['tab_id']
+               and pane.get('is_focused') and not pane.get('is_floating') and not pane.get('is_plugin')
+               and not pane.get('is_suppressed') and not pane.get('exited')]
+    if len(targets) != 1:
+        raise ValueError('Cannot identify one workspace pane behind this menu; run command-center apps from that pane')
+    # A suspended starter has no process cwd yet; the menu inherits its launch directory.
+    directory = targets[0].get('pane_cwd') or menu.get('pane_cwd') or str(Path.cwd())
+    return targets[0]['id'], directory
+
+
+def app_actions(tool, origin=False):
     actions = []
     if tool:
         if os.environ.get('ZELLIJ'):
             actions += [dict(name='Open in new tiled pane', action='new'),
                         dict(name='Open floating', action='floating')]
-        actions.append(dict(name='Use menu pane', action='current',
-                            description='Replace the menu; returns to its parent shell when the app exits'))
+        actions.append(dict(name='Open in current pane' if origin else 'Use menu pane', action='current',
+                            description=('Close the menu and use the terminal where you typed command-center apps'
+                                         if origin else
+                                         'Replace the menu; returns to its parent shell when the app exits')))
     return actions
 
 
@@ -346,12 +391,140 @@ def install_formula(formula):
     env = tool_env()
     env['HOMEBREW_NO_INSTALL_CLEANUP'] = '1'
     subprocess.run([executable, 'install', '--formula', formula], env=env, check=True)
+    try:
+        register_formula(formula)
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        print('Package installed. Could not add its launcher: ' + clean(str(error), 500))
     input('\nInstallation finished. Press Enter to return to the catalog. ')
 
 
-def selected_entry(row, source):
+def register_formula(formula):
+    registry = Registry()
+    commands = registry.formula_commands(formula)
+    primary = [path for path in commands if Path(path).name.casefold() == formula]
+    if len(primary) == 1 or len(commands) == 1:
+        path = (primary or commands)[0]
+    elif commands:
+        rows = [dict(name=Path(path).name, path=path, description=path) for path in commands]
+        selected = choose(rows, 'Add package app', header='Choose the command to add to apps · Esc: skip')
+        if not selected:
+            return
+        path = selected['path']
+    else:
+        print('No executable found in this package’s bin folder. Use Add to apps for a custom launch command.')
+        return
+    tool = Path(path).name.casefold()
+    if tool in PANEL_TOOLS:
+        registry.restore(tool)
+    else:
+        registry.register(tool, [path])
+    print('Available in apps: ' + clean(tool))
+
+
+def add_app_menu(query=''):
+    registry = Registry()
+    rows = [dict(name='Enter a command or executable path…', manual=True)]
+    rows += [dict(name=name, path=path, description=path) for name, path in sorted(registry.executables().items())]
+    selected = choose(rows, 'Add app', query=query, name_search=True,
+                      header='Choose an installed command · Clear search to enter a custom path · Esc: back')
+    if not selected:
+        return
+    if selected.get('manual'):
+        command = input('Launch command (quote paths with spaces): ').strip()
+        if not command:
+            return
+        argv = shlex.split(command)
+    else:
+        arguments = input('Arguments (optional): ').strip()
+        argv = [selected['path'], *shlex.split(arguments)]
+    tool = re.sub(r'[^a-z0-9+_.@-]', '-', Path(argv[0]).name.casefold()).strip('-._@+') or 'app'
+    if tool in PANEL_TOOLS:
+        registry.restore(tool)
+    else:
+        name = input('Display name [' + clean(tool) + ']: ').strip() or tool
+        existing = registry.settings()['apps'].get(tool)
+        replace = False
+        if existing:
+            action = choose([dict(name='Back'), dict(name='Replace saved launcher', replace=True)],
+                            'Save app', header='Existing launcher: ' + shlex.join(existing['argv']))
+            if not action or not action.get('replace'):
+                return
+            replace = True
+        registry.register(tool, argv, name=name, replace=replace)
+
+
+def search_folders_menu():
+    registry = Registry()
+    while True:
+        custom = registry.settings()['folders']
+        rows = [dict(name='Add search folder…', add=True)]
+        rows += [dict(name=str(path), path=str(path), custom=str(path) in custom,
+                      description='Saved folder' if str(path) in custom else 'PATH / common install folder')
+                 for path in registry.directories()]
+        selected = choose(rows, 'Search folders', header='Folders are scanned directly; subfolders are not searched · Esc: back')
+        if not selected:
+            return
+        if selected.get('add'):
+            value = input('Folder to search: ').strip()
+            if value:
+                registry.add_folder(value)
+        elif selected.get('custom'):
+            action = choose([dict(name='Back'), dict(name='Remove search folder', remove=True)],
+                            'Search folder', header=selected['path'])
+            if action and action.get('remove'):
+                registry.remove_folder(selected['path'])
+
+
+def restore_apps_menu():
+    registry = Registry()
+    data = registry.settings()
+    rows = [dict(name=data['apps'].get(tool, {}).get('name', BUILTINS.get(tool, tool)), tool=tool)
+            for tool in data['hidden']]
+    selected = choose(rows, 'Restore app', header='Choose an app to show again · Esc: back')
+    if selected:
+        registry.restore(selected['tool'])
+
+
+def uninstall_app(tool):
+    registry = Registry()
+    app = registry.resolve(tool)
+    tool = app['tool']
+    command = registry.settings()['uninstall'].get(tool)
+    if command:
+        confirm = choose([dict(name='Back'), dict(name='Uninstall ' + app['name'], uninstall=True)],
+                         'Saved uninstall command', header=shlex.join(command))
+        if confirm and confirm.get('uninstall'):
+            subprocess.run(command, env=registry.environment(), check=True)
+            registry.remove(tool)
+            input('\nUninstall command finished. Press Enter to return to apps. ')
+        return
+    formula = registry.homebrew_formula(app)
+    if not formula:
+        action = choose([dict(name='Back'), dict(name='Remove from apps (keep installed files)', remove=True)],
+                        'Manual installation', header=app['name'] + '\n' + app['argv'][0] +
+                        '\nNo Homebrew ownership found. Use the original installer/package manager, or save its uninstall command from the app menu.')
+        if action and action.get('remove'):
+            registry.remove(tool)
+        return
+    confirm = choose([dict(name='Back'), dict(name='Uninstall ' + formula, uninstall=True)],
+                     'Uninstall package', header='Command: brew uninstall --formula ' + formula +
+                     '\nThis removes the package and its commands. Command Center preferences are retained.')
+    if not confirm or not confirm.get('uninstall'):
+        return
+    env = dict(registry.environment(), HOMEBREW_NO_AUTO_UPDATE='1')
+    brew = shutil.which('brew', path=env['PATH'])
+    if not brew:
+        raise ValueError('Homebrew is not available')
+    subprocess.run([brew, 'uninstall', '--formula', formula], env=env, check=True)
+    registry.remove(tool)
+    input('\nPackage uninstalled. Press Enter to return to apps. ')
+
+
+def selected_entry(row, source, origin=False):
     tool = configured_app(row)
-    actions = app_actions(tool)
+    actions = app_actions(tool, origin=origin)
+    if not tool:
+        actions.append(dict(name='Add to apps…', action='add'))
     if source == 'homebrew':
         actions.append(dict(name='Install with Homebrew…', action='install'))
     else:
@@ -362,19 +535,23 @@ def selected_entry(row, source):
     if not selected or 'action' not in selected:
         return False
     action = selected['action']
+    if action == 'current' and origin:
+        return tool
     if action in ('new', 'floating', 'current'):
         launch_app(tool, action)
         return True
     if action == 'install':
         install_formula(row['formula'])
+    elif action == 'add':
+        add_app_menu(query=row['name'])
     elif action == 'web':
         open_url(row['url'])
     elif action == 'search':
-        return browse_source('homebrew', query=row['name'])
+        return browse_source('homebrew', query=row['name'], name_search=True, origin=origin)
     return False
 
 
-def browse_source(source, query='', refresh=False):
+def browse_source(source, query='', refresh=False, name_search=False, origin=False):
     while True:
         try:
             print('Loading ' + SOURCES[source]['name'] + '…', flush=True)
@@ -395,9 +572,11 @@ def browse_source(source, query='', refresh=False):
                   '\nEnter: details/actions · Ctrl+R: refresh · Ctrl+P: preview · Esc: back')
         if snapshot['warning']:
             header += '\n' + snapshot['warning']
+        if name_search:
+            header += '\nPackage names only · No match? Edit search, or Esc then open the project page for installation.'
         while True:
-            selected = choose(snapshot['entries'], 'Search', header=header, query=query,
-                              preview=True, refresh=True)
+            selected = choose(snapshot['entries'], 'Package name' if name_search else 'Search',
+                              header=header, query=query, preview=True, refresh=True, name_search=name_search)
             if selected is None:
                 return False
             query = selected.pop('_query', query)
@@ -405,8 +584,9 @@ def browse_source(source, query='', refresh=False):
                 refresh = True
                 break
             try:
-                if selected_entry(selected, source):
-                    return True
+                result = selected_entry(selected, source, origin=origin)
+                if result:
+                    return result
             except (ValueError, OSError, subprocess.SubprocessError) as error:
                 choose([dict(name='Back to results')], 'Could not complete action', header=clean(error))
 
@@ -420,32 +600,94 @@ def catalog_page(source):
     }[source]
 
 
-def catalogs_menu():
+def catalogs_menu(origin=False):
     rows = [dict(meta, source=source) for source, meta in SOURCES.items()]
     while True:
         selected = choose(rows, 'Choose catalog', header='Pick a source, then type to search its tools · Esc: back')
         if not selected:
-            return
-        if browse_source(selected['source']):
-            return
+            return False
+        result = browse_source(selected['source'], origin=origin)
+        if result:
+            return result
 
 
-def apps_menu():
-    rows = [dict(name=name, tool=tool, description=tool + ' · installed on PATH')
-            for tool, name in APP_TOOLS.items() if shutil.which(tool, path=tool_env()['PATH'])]
-    rows.append(dict(name='Browse catalogs…', catalogs=True,
-                     description='Terminal Trove · Awesome TUIs · Awesome CLI/TUI Apps · Homebrew'))
+def apps_menu(pick=False, origin=False):
+    query = ''
     while True:
-        selected = choose(rows, 'Apps', header='Configured installed apps · Esc: close')
+        registry = Registry()
+        rows = registry.applications()
+        if pick:
+            rows = [row for row in rows if row.get('available')]
+            rows += [dict(name='Shell', panel='shell', description='Open an ordinary shell in this pane'),
+                     dict(name='Weather', panel='weather', description='Show the configured forecast, then a shell')]
+        else:
+            rows += [dict(name='Add to apps…', add=True), dict(name='Search folders…', folders=True),
+                     dict(name='Restore hidden apps…', restore=True),
+                     dict(name='Refresh discovery catalogs…', catalogs_refresh=True),
+                     dict(name='Browse catalogs…', catalogs=True,
+                          description='Terminal Trove · Awesome TUIs · Awesome CLI/TUI Apps · Homebrew')]
+        selected = choose(rows, 'Choose an app' if pick else 'Apps', query=query, refresh=True,
+                          header=('Enter: use this pane · Ctrl+R: rescan · Esc: shell' if pick else
+                                  'Installed and saved apps · Ctrl+R: rescan · Esc: close'))
         if not selected:
             return
-        if selected.get('catalogs'):
-            catalogs_menu()
-            return
-        action = choose(app_actions(selected['tool']), 'Open ' + selected['name'])
-        if action:
-            launch_app(selected['tool'], action['action'])
-            return
+        query = selected.pop('_query', query)
+        try:
+            if pick and selected.get('panel') in ('shell', 'weather'):
+                command = str(ROOT / 'bin/cc-panel')
+                os.execve(command, [command, selected['panel']], registry.environment())
+            if pick and selected.get('available'):
+                launch_app(selected['tool'], 'current')
+                return
+            if selected.get('refresh'):
+                continue
+            if selected.get('catalogs'):
+                result = catalogs_menu(origin=origin)
+                if result:
+                    return result if isinstance(result, str) else None
+                continue
+            if selected.get('add'):
+                add_app_menu()
+                continue
+            if selected.get('folders'):
+                search_folders_menu()
+                continue
+            if selected.get('restore'):
+                restore_apps_menu()
+                continue
+            if selected.get('catalogs_refresh'):
+                for source in ('awesome-tuis', 'awesome-cli', 'terminal-trove'):
+                    print('Refreshing ' + SOURCES[source]['name'] + '…', flush=True)
+                    try:
+                        load_catalog(source, refresh=True)
+                    except ValueError as error:
+                        print(clean(str(error)))
+                input('Catalog refresh finished. Press Enter to return to apps. ')
+                continue
+            actions = app_actions(selected['tool'], origin=origin) if selected.get('available') else []
+            actions += [dict(name='Remove from apps (keep installed files)', action='remove')]
+            if selected.get('available'):
+                actions.append(dict(name='Uninstall…', action='uninstall'))
+                actions.append(dict(name='Set uninstall command…', action='set-uninstall'))
+            actions.append(dict(name='Back'))
+            action = choose(actions, 'App', header=selected['name'] + '\n' + shlex.join(selected['argv']))
+            if not action or 'action' not in action:
+                continue
+            if action['action'] == 'current' and origin:
+                return selected['tool']
+            elif action['action'] == 'remove':
+                registry.remove(selected['tool'])
+            elif action['action'] == 'uninstall':
+                uninstall_app(selected['tool'])
+            elif action['action'] == 'set-uninstall':
+                value = input('Uninstall command (quote paths with spaces): ').strip()
+                if value:
+                    registry.set_uninstall(selected['tool'], shlex.split(value))
+            else:
+                launch_app(selected['tool'], action['action'])
+                return
+        except (ValueError, OSError, subprocess.SubprocessError) as error:
+            choose([dict(name='Back to apps')], 'Could not complete action', header=clean(str(error)))
 
 
 def run_catalogs(args):

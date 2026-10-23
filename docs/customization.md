@@ -4,7 +4,7 @@ The command center is configuration around existing tools. A new tool can run im
 
 ## Layouts
 
-Source templates are in `config/zellij/layouts/`. `command-center.kdl` contains all five tabs; the other five files launch individual workspaces. Panes use percentages so layouts adapt to different window sizes. No maximum pane count is imposed by the launcher; available terminal space limits useful panel sizes.
+Source templates are in `config/zellij/layouts/`. `command-center.kdl` contains all five tabs; the other five files launch individual workspaces. All built-in leaf panes wait for Enter, then run the app picker in that pane. No tools are preassigned. Canceling the picker opens a shell. Panes use percentages so layouts adapt to different window sizes. No maximum pane count is imposed by the launcher; available terminal space limits useful panel sizes.
 
 The launcher renders the quoted `{{PROJECT}}` and `{{CC_PANEL}}` placeholders with safely escaped absolute paths. Launch built-in templates through `command-center` or `command-center add-workspace`; the raw files are not meant to run directly through `zellij --layout` before rendering.
 
@@ -61,7 +61,7 @@ To launch configured tools in the current shell pane, use `command-center run TO
 
 ## Agent and optional-tool choices
 
-The starter AGENTS tab includes Hermes, OpenCode, Pi, and Codex CLI. Rename, remove, or duplicate any pane. Multiple Hermes panes start separate conversations while sharing your existing provider configuration and potentially persistent memory. Distinct panes do not isolate files or shared settings; use separate Git worktrees for concurrent edits.
+The starter AGENTS tab has four unassigned panes. Press Enter in each to choose Hermes, OpenCode, Pi, Codex CLI, or another installed app. Rename, remove, or duplicate any pane. Multiple Hermes panes start separate conversations while sharing your existing provider configuration and potentially persistent memory. Distinct panes do not isolate files or shared settings; use separate Git worktrees for concurrent edits.
 
 Optional tools can be installed separately:
 

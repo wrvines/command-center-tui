@@ -10,18 +10,18 @@ layout {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true focus=true {
-                    args "hermes"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "opencode"
+                    args "apps"
                 }
             }
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "pi"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "codex"
+                    args "apps"
                 }
             }
         }

@@ -9,10 +9,10 @@ layout {
     tab name="NEWS & WEATHER" {
         pane split_direction="vertical" {
             pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
-                args "newsboat"
+                args "apps"
             }
             pane command="{{CC_PANEL}}" start_suspended=true size="40%" {
-                args "weather"
+                args "apps"
             }
         }
     }

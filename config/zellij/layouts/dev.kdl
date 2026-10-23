@@ -8,13 +8,19 @@ layout {
     }
     tab name="DEV" {
         pane split_direction="vertical" {
-            pane size="60%" focus=true
+            pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
+                args "apps"
+            }
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "lazygit"
+                    args "apps"
                 }
-                pane
-                pane
+                pane command="{{CC_PANEL}}" start_suspended=true {
+                    args "apps"
+                }
+                pane command="{{CC_PANEL}}" start_suspended=true {
+                    args "apps"
+                }
             }
         }
     }

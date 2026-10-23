@@ -8,41 +8,51 @@ layout {
     }
     tab name="DEV" focus=true {
         pane split_direction="vertical" {
-            pane size="60%" focus=true
+            pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
+                args "apps"
+            }
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "lazygit"
+                    args "apps"
                 }
-                pane
-                pane
+                pane command="{{CC_PANEL}}" start_suspended=true {
+                    args "apps"
+                }
+                pane command="{{CC_PANEL}}" start_suspended=true {
+                    args "apps"
+                }
             }
         }
     }
     tab name="SYSTEM" {
         pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
-            args "btop" "--compact"
+            args "apps"
         }
         pane split_direction="vertical" size="40%" {
-            pane
-            pane
+            pane command="{{CC_PANEL}}" start_suspended=true {
+                args "apps"
+            }
+            pane command="{{CC_PANEL}}" start_suspended=true {
+                args "apps"
+            }
         }
     }
     tab name="AGENTS" {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true focus=true {
-                    args "hermes"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "opencode"
+                    args "apps"
                 }
             }
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "pi"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "codex"
+                    args "apps"
                 }
             }
         }
@@ -50,10 +60,10 @@ layout {
     tab name="NEWS & WEATHER" {
         pane split_direction="vertical" {
             pane command="{{CC_PANEL}}" start_suspended=true size="60%" focus=true {
-                args "newsboat"
+                args "apps"
             }
             pane command="{{CC_PANEL}}" start_suspended=true size="40%" {
-                args "weather"
+                args "apps"
             }
         }
     }
@@ -61,18 +71,18 @@ layout {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true focus=true {
-                    args "logs"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "services"
+                    args "apps"
                 }
             }
             pane split_direction="horizontal" {
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "lazygit"
+                    args "apps"
                 }
                 pane command="{{CC_PANEL}}" start_suspended=true {
-                    args "lazydocker"
+                    args "apps"
                 }
             }
         }

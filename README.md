@@ -87,7 +87,7 @@ command-center --workspace agents
 
 An existing named session keeps its directories and arrangement when you reconnect. `--project`, `--workspace`, and `--layout` choose initial settings for a new session; they do not reset a live one. The launcher restores exited sessions through Zellij's native resurrection.
 
-Panels for agents, monitoring, news, weather, and Git wait for Enter before starting. Your ordinary shell panels are immediately usable. Multiple normal Ghostty windows can remain open alongside the command center.
+Every pane in a premade workspace starts unassigned at a small Enter prompt. Press **Enter** to choose an app, then **Enter** on the app to run it in that pane. Choose **Shell** or press **Esc** in the picker for a normal shell. An app returns to a shell when it exits. New panes created with the split shortcuts still open ordinary shells. Multiple normal Ghostty windows can remain open alongside the command center.
 
 ## App menu and tool catalogs
 
@@ -105,9 +105,15 @@ command-center catalogs --source awesome-tuis --query monitor
 command-center catalogs --source homebrew --query terminal
 ```
 
-Use **Enter** for details/actions, **Ctrl+P** for the text preview, **Ctrl+R** to refresh, and **Esc** to go back. Configured installed apps offer a **new tiled pane by default**, with floating or the menu's current pane as alternatives. To use an existing empty shell pane, run `command-center apps --inline` there and choose **Use menu pane**. Unfamiliar entries can be searched in Homebrew; installation shows the exact package command and requires a separate selection. Project pages open in a browser only when you choose that action.
+Use **Enter** for details/actions, **Ctrl+P** for the text preview, **Ctrl+R** to refresh, and **Esc** to go back. Configured installed apps offer a **new tiled pane by default** or **Open floating**. When you type `command-center apps` in a shell, **Open in current pane** closes the floating menu and runs the selected app where you typed the command. Exiting the app returns to that shell. The **Ctrl+g → a** shortcut also offers **Open in current pane**: it uses the workspace pane behind the floating menu and restores the previous shell/app when you exit. `command-center apps --inline` also lets you choose **Use menu pane** directly in an existing shell pane. Unfamiliar entries can be searched in Homebrew; installation shows the exact package command and requires a separate selection. Project pages open in a browser only when you choose that action.
 
-Results are cached for 24 hours. The menu labels stale results and Terminal Trove's limited recent-feed fallback; it does not present either as a fresh full catalog. The installed-app list recognizes the setup's known adapters rather than every executable on the machine. Arbitrary app registration and a saved-setup picker are planned; existing layout saving/restoration remains available.
+**Search Homebrew for this name** searches package names without fuzzy description matches. If nothing matches, edit the name or press **Esc** and open the project page for other installation options.
+
+The app menu discovers installed commands from cached terminal-tool catalogs in PATH, common user install folders, and folders you add under **Search folders…**. **Add to apps…** saves unmatched commands and arguments. Homebrew installs from the menu register an unambiguous app command automatically, or ask which executable to add. **Ctrl+R** rescans installed apps; **Refresh discovery catalogs…** updates the source metadata. See [app discovery and saved launchers](docs/app-discovery.md).
+
+Select an app for **Remove from apps** or **Uninstall…**. Removal hides its launcher and keeps installed files; hidden apps can be restored. Uninstall shows the Homebrew package or a saved manual uninstall command before confirmation. Manual installs without a known uninstall command show their location and instructions for the original package manager.
+
+Catalog results are cached for 24 hours. The menu labels stale results and Terminal Trove's limited recent-feed fallback; it does not present either as a fresh full catalog. Automatic name matching does not classify every executable as a TUI. A saved-setup picker remains planned; existing layout saving/restoration is available.
 
 The menu uses **fzf**, now included in the installers. On an existing Mac, run `brew install fzf` if missing. Linux and Windows/WSL use the same menu; inside WSL use `~/.local/bin/command-center catalogs` if needed. For older sessions, the CLI commands work immediately; new sessions load the shortcut. See [catalog usage, sources, and limitations](docs/catalogs.md).
 
@@ -123,6 +129,8 @@ Open Ghostty normally and type any standalone command below. New-panel commands 
 | Codex CLI | `codex` | `command-center pane codex` |
 | btop — full view | `command-center run btop` | `command-center pane btop` |
 | btop — small pane | `command-center run btop --compact` | `command-center pane btop --compact` |
+| abtop — optional AI agent monitor | `command-center run abtop` | `command-center pane abtop` |
+| Amp — optional text editor | `command-center run amp` | `command-center pane amp` |
 | Newsboat — configured feeds | `command-center run newsboat` | `command-center pane newsboat` |
 | Weather | `command-center weather` | `command-center pane weather` |
 | Lazygit | `lazygit` | `command-center pane lazygit` |
@@ -142,7 +150,7 @@ command-center pane hermes --direction right
 command-center pane codex --direction down
 ```
 
-Repeat an agent's panel command to open another independent session. New-panel commands start the tool immediately; in the starter layouts, focus a suspended panel and press **Enter** to launch it.
+Repeat an agent's panel command to open another independent session. New-panel commands start the tool immediately; in the starter layouts, focus an unassigned pane and press **Enter** to choose an app.
 
 Useful commands from your ordinary terminal or a command-center shell:
 
@@ -172,15 +180,17 @@ There is no universal refresh command for every tool. Btop updates automatically
 
 | Tab | Starting arrangement |
 | --- | --- |
-| DEV | Large coding shell; Git, development output, and another shell on the right |
-| SYSTEM | Compact btop above two shell panes; switch views for CPU, memory/disks, network, and processes |
-| AGENTS | Separate Hermes, OpenCode, Pi, and Codex CLI panes, all initially suspended |
-| NEWS & WEATHER | BBC News, Hacker News, and GitHub Blog in Newsboat; weather for 84121 |
-| OPERATIONS | Project logs, services, Git, and an optional container pane |
+| DEV | One large pane with three panes on the right |
+| SYSTEM | One large upper pane with two panes beneath |
+| AGENTS | Four panes in a grid |
+| NEWS & WEATHER | Two panes side by side, 60% / 40% |
+| OPERATIONS | Four panes in a grid |
+
+All starter panes are unassigned. Press **Enter** in any pane to choose an installed app, Shell, or Weather. Selecting an app fills that pane without adding another. The regular **Ctrl+g → a** menu retains its launch and app-management actions. Existing sessions and saved layouts keep their panes and commands. Try the new templates from an ordinary terminal with `command-center --session choose-apps` using a previously unused session name.
 
 ### What to run in DEV OUTPUT
 
-DEV OUTPUT describes the middle-right shell's intended role in the starter DEV layout. It is an ordinary shell for watching your project's output while you work in another pane. Its visible title follows what it is running; it starts at a shell prompt, and you choose the command yourself.
+DEV OUTPUT describes the middle-right shell's intended role in the starter DEV layout. For that role, press Enter in a DEV starter pane and choose Shell. You can then watch your project's output while working in another pane. Its visible title follows the command you run.
 
 | Use | Example |
 | --- | --- |
@@ -193,7 +203,7 @@ Run these from the appropriate project directory and use that project's document
 
 ### What the diagnostic panel is for
 
-The diagnostic panel is an ordinary shell for checking your system alongside btop. In the current SYSTEM template, the two shells beneath btop are available for this purpose. They do not run checks automatically, and their titles follow the commands you run.
+The diagnostic panel is an ordinary shell for checking your system alongside btop. In a new SYSTEM tab, choose btop in the upper pane and Shell in either lower pane for this purpose. They do not run checks automatically, and their titles follow the commands you run.
 
 | Command | Purpose |
 | --- | --- |
@@ -261,7 +271,7 @@ Inside compact btop, press **p** / **Shift+p** to cycle CPU → memory/disks →
 
 Native btop was tested at 60 columns with CPU at 8 rows, memory/disks at 10 rows, network at 6 rows, and processes at 16 rows. These are usable test sizes, not a promise that every combination fits. A full view still needs more room. Enlarge or fullscreen a pane before choosing a view that needs more height. Btop cannot scale all its sections below their native minimum sizes. See [btop's native controls](https://github.com/aristocratos/btop).
 
-New SYSTEM tabs give the compact monitor 60% of the height, with two side-by-side shells underneath. Existing saved sessions keep your arrangement. To try the new template without replacing it, run this from a command-center shell:
+New SYSTEM tabs give the upper pane 60% of the height, with two side-by-side panes underneath. Press Enter in the upper pane and choose btop to use the compact monitor there; choose Shell or another app in the lower panes. Existing saved sessions keep your arrangement. To try the new template without replacing it, run this from a command-center shell:
 
 ```sh
 command-center add-workspace system
@@ -381,7 +391,7 @@ Saving refuses to overwrite an existing saved layout. Choose a new name or edit 
 
 Save a reusable layout while the tools you want to remember are running. The snapshot records commands at save time; it is not a history of the last tool used in each shell. If you already quit a tool back to the shell, that tool may not be captured. Native command discovery can also be imperfect with wrappers, so inspect the exported commands before relying on a custom layout.
 
-For a saved layout that should always wait before starting a tool in a new session, mark that command pane `start_suspended=true` in its KDL file. Starter tool panes already use this setting. Plain shell panes start at a normal prompt. See [suspended layout commands](https://zellij.dev/documentation/creating-a-layout#start_suspended) and [session resurrection](https://zellij.dev/documentation/session-resurrection).
+For a saved layout that should always wait before starting a tool in a new session, mark that command pane `start_suspended=true` in its KDL file. Every premade starter pane uses this setting for the app picker. Newly split shell panes start at a normal prompt. See [suspended layout commands](https://zellij.dev/documentation/creating-a-layout#start_suspended) and [session resurrection](https://zellij.dev/documentation/session-resurrection).
 
 ## Installation and configuration
 

@@ -7,7 +7,7 @@ case "$(uname -s)" in
     Darwin) CC_DATA="${CC_DATA:-$HOME/Library/Application Support/command-center}" ;;
     *) CC_DATA="${CC_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/command-center}" ;;
 esac
-export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin"
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin"
 panel_shell="${SHELL:-/bin/bash}"
 [[ -x "$panel_shell" ]] || panel_shell=/bin/bash
 panel="${1:-shell}"
@@ -23,9 +23,13 @@ if [[ -n ${ZELLIJ:-} && -t 1 ]]; then
     printf '\033]2;%s\007' "$panel"
 fi
 case "$panel" in
+    apps)
+        "$CC_ROOT/bin/command-center" apps --pick
+        exec "$CC_ROOT/bin/cc-shell"
+        ;;
     shell) exec "$CC_ROOT/bin/cc-shell" ;;
     hermes) need hermes; exec hermes chat "$@" ;;
-    opencode|pi|codex|yazi) need "$panel"; exec "$panel" "$@" ;;
+    opencode|pi|codex|yazi|abtop|amp) need "$panel"; exec "$panel" "$@" ;;
     btop)
         need btop
         btop_config="$CC_CONFIG/btop.conf"

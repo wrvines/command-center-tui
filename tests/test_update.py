@@ -25,7 +25,7 @@ class UpdateTests(unittest.TestCase):
         self.git(self.base, "init", "--bare", str(self.remote))
         self.git(self.base, "clone", str(self.remote), str(self.source))
         self.git(self.source, "checkout", "-b", "main")
-        for name in ("bin/command-center", "lib/cc.py", "lib/cc_update.py"):
+        for name in ("bin/command-center", "lib/cc.py", "lib/cc_update.py", "lib/cc_apps.py"):
             target = self.source / name
             target.parent.mkdir(exist_ok=True)
             shutil.copy2(ROOT / name, target)
