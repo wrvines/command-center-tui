@@ -200,6 +200,22 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             catalogs.parse_catalog('awesome-tuis', '- [bad](javascript:alert) bad')
 
+    def test_downloads_ignore_user_curlrc_and_allow_only_https(self):
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            Path(command[command.index('--output') + 1]).write_text('body')
+            return subprocess.CompletedProcess(command, 0, '', '')
+
+        with patch.object(catalogs.subprocess, 'run', side_effect=fake_run):
+            self.assertEqual(catalogs.fetch_text('https://example.com/list/'), 'body')
+        command = calls[0]
+        self.assertEqual(command[1], '--disable')
+        self.assertEqual(command[command.index('--proto') + 1], '=https')
+        self.assertEqual(command[command.index('--proto-redir') + 1], '=https')
+        self.assertIn('--max-filesize', command)
+
     def test_empty_or_broken_refresh_preserves_last_good_cache(self):
         body = 'category,name,homepage,git,description\nmonitoring,btop,https://example.com,,CPU\n'
         with tempfile.TemporaryDirectory() as temp:

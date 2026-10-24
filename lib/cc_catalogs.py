@@ -165,7 +165,8 @@ def normalize(rows):
 def fetch_text(url):
     with tempfile.TemporaryDirectory(prefix='cc-catalog-download-') as temp:
         target = Path(temp) / 'index'
-        result = subprocess.run(['curl', '--fail', '--silent', '--show-error', '--location',
+        # --disable must be the first argument: ignore any user ~/.curlrc defaults.
+        result = subprocess.run(['curl', '--disable', '--fail', '--silent', '--show-error', '--location',
                                  '--proto', '=https', '--proto-redir', '=https',
                                  '--connect-timeout', '8', '--max-time', '45', '--max-filesize', str(MAX_BYTES),
                                  '--output', str(target), url], env=tool_env(), capture_output=True,

@@ -104,6 +104,34 @@ class WeatherTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(list((self.base / "cache/weather").glob("*.txt")))
 
+    def test_control_sequences_are_refused_and_cached_forecasts_display_as_data(self):
+        self.fake_curl("printf 'Sunny, 20 C\\n'")
+        self.assertEqual(self.weather().returncode, 0)
+        cache = next((self.base / "cache/weather").glob("*.txt"))
+        self.assertEqual(cache.read_text(), "Sunny, 20 C\n")
+        self.fake_curl("printf 'Safe\\r25 C\\033]52;c;AAA=\\007\\033[31mred\\n'")
+        stale = self.weather("--refresh")
+        self.assertEqual(stale.returncode, 0, stale.stderr)
+        self.assertIn("STALE", stale.stdout)
+        self.assertNotIn("\x1b", stale.stdout)
+        self.assertEqual(cache.read_text(), "Sunny, 20 C\n")
+        cache.write_text("Sunny\n\x1b]2;spoof\x07bad\x1b[0m\n")
+        displayed = self.weather()
+        self.assertEqual(displayed.returncode, 0)
+        self.assertNotIn("\x1b", displayed.stdout)
+        self.assertNotIn("\r", displayed.stdout)
+
+    def test_requests_pin_https_ignore_user_curlrc_and_limit_size(self):
+        arguments = self.base / "curl-arguments.txt"
+        self.fake_curl('echo "$@" > "' + str(arguments) + '"\nprintf \'Sunny, 20 C\\n\'')
+        result = self.weather()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        argv = arguments.read_text().split()
+        self.assertEqual(argv[0], "--disable")
+        for flag, value in (("--proto", "=https"), ("--proto-redir", "=https"),
+                            ("--max-filesize", "200000"), ("--connect-timeout", "5"), ("--max-time", "15")):
+            self.assertEqual(argv[argv.index(flag) + 1], value, argv)
+
     def test_empty_location_does_not_fetch(self):
         self.prefs.write_text('{"weather_location":""}')
         self.fake_curl("exit 99")
