@@ -91,8 +91,15 @@ def main():
 
         def wait_for(test, description):
             for _ in range(30):
-                if test():
-                    return
+                try:
+                    if test():
+                        return
+                except json.JSONDecodeError as error:
+                    # Zellij can briefly return no metadata during pane replacement.
+                    # Retry an empty response within this wait's existing limit;
+                    # malformed nonempty JSON must still fail immediately.
+                    if error.doc.strip():
+                        raise
                 time.sleep(0.1)
             raise RuntimeError("Failed: " + description + "\n" + action("dump-screen"))
 
