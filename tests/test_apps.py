@@ -237,6 +237,31 @@ elif sys.argv[1] == 'uninstall':
         self.assertTrue(command.exists())
         self.assertEqual(self.registry.applications(), [])
 
+    def test_symlinked_registry_is_refused(self):
+        self.registry.file.parent.mkdir(parents=True, exist_ok=True)
+        elsewhere = self.base / 'elsewhere.json'
+        elsewhere.write_text('{"schema": 1}')
+        self.registry.file.symlink_to(elsewhere)
+        with self.assertRaisesRegex(ValueError, 'symlinked'):
+            self.registry.settings()
+
+    def test_menu_headers_never_render_saved_arguments_as_terminal_sequences(self):
+        app = self.executable(self.bin / 'mytool')
+        self.registry.register('mytool', [str(app), '--flag\x1b]52;c;AAA=\x07'])
+        headers = []
+
+        def capture(rows, prompt, header='', **kwargs):
+            headers.append(header)
+            return rows[0] if len(headers) == 1 else None
+
+        with patch.object(catalogs, 'Registry', return_value=self.registry), \
+                patch.object(catalogs, 'choose', side_effect=capture):
+            catalogs.apps_menu()
+        self.assertEqual(len(headers), 3)
+        self.assertIn('--flag', headers[1])
+        for header in headers:
+            self.assertNotIn('\x1b', header)
+
     def test_cli_registration_run_and_listing_need_no_fzf_or_live_state(self):
         executable = self.executable(self.base / 'external/my tool')
         env = dict(os.environ, COMMAND_CENTER_HOME=str(self.base / 'state'))

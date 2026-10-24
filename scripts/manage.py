@@ -60,7 +60,12 @@ def install(home, data, manifest, dry_run, system=None, no_ghostty=False, config
     original = modern.read_bytes() if not no_ghostty and modern.exists() else b""
     if BEGIN.encode() in original or END.encode() in original:
         raise ValueError("Found an existing managed block without a manifest; inspect it before installing")
-    block = (BEGIN + "\nconfig-file = " + str(ROOT / "config/ghostty/command-center.ghostty") + "\n" + END + "\n").encode()
+    include = str(ROOT / "config/ghostty/command-center.ghostty")
+    # The include line is inserted verbatim; a quote, comment, or newline in the
+    # checkout path would rewrite or truncate the user's Ghostty configuration.
+    if any(character == '"' or character == "#" or ord(character) < 32 for character in include):
+        raise ValueError("Checkout path cannot be written into Ghostty configuration: " + include)
+    block = (BEGIN + "\nconfig-file = " + include + "\n" + END + "\n").encode()
     updated = original + (b"\n" if original and not original.endswith(b"\n") else b"") + block
     entries = []
     for name in ("command-center", "ccenter"):

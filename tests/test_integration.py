@@ -1,4 +1,6 @@
 """Behavior checks for ownership, persistence decisions, and network failure handling."""
+import importlib.machinery
+import importlib.util
 import json
 import os
 import pty
@@ -458,6 +460,22 @@ sys.exit(7)
         second = subprocess.run(command, env=self.env, capture_output=True, text=True)
         self.assertNotEqual(second.returncode, 0)
         self.assertEqual(target.read_bytes(), content)
+
+
+class SelectionPathTests(unittest.TestCase):
+    def test_return_selection_is_confined_to_a_temporary_selection_file(self):
+        launcher = ROOT / "bin/command-center"
+        loader = importlib.machinery.SourceFileLoader("command_center", str(launcher))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        command_center = importlib.util.module_from_spec(spec)
+        loader.exec_module(command_center)
+        good = Path(tempfile.gettempdir()) / "cc-app-selection-test" / "selection.json"
+        self.assertEqual(command_center.selection_response(good), good.resolve())
+        self.assertIsNone(command_center.selection_response(None))
+        for bad in (good.parent / "other.json", Path.home() / "selection.json"):
+            with self.subTest(path=bad):
+                with self.assertRaisesRegex(ValueError, "temporary"):
+                    command_center.selection_response(bad)
 
 
 if __name__ == "__main__":

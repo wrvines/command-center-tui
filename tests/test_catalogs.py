@@ -216,6 +216,12 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(command[command.index('--proto-redir') + 1], '=https')
         self.assertIn('--max-filesize', command)
 
+    def test_feed_document_types_and_entities_are_rejected(self):
+        hostile = ('<?xml version="1.0"?><!DOCTYPE feed [<!ENTITY x "boom">]>'
+                   '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>&x;</title></entry></feed>')
+        with self.assertRaisesRegex(ValueError, 'document type'):
+            catalogs.parse_feed(hostile)
+
     def test_empty_or_broken_refresh_preserves_last_good_cache(self):
         body = 'category,name,homepage,git,description\nmonitoring,btop,https://example.com,,CPU\n'
         with tempfile.TemporaryDirectory() as temp:

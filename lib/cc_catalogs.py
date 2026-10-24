@@ -138,6 +138,9 @@ def parse_catalog(source, body):
 
 
 def parse_feed(body):
+    # Text from the network is data; a document type would redefine the language.
+    if re.search(r'<!\s*(?:DOCTYPE|ENTITY)', body, re.IGNORECASE):
+        raise ValueError('Feed document type declarations are not accepted')
     root = ET.fromstring(body)
     ns = '{http://www.w3.org/2005/Atom}'
     rows = []
@@ -185,8 +188,9 @@ def load_catalog(source, refresh=False, cache_dir=None, fetch=None):
     target = folder / (source + '.json')
     cached = None
     try:
-        if target.stat().st_size <= MAX_BYTES:
-            candidate = json.loads(target.read_text())
+        raw = target.read_bytes()
+        if len(raw) <= MAX_BYTES:
+            candidate = json.loads(raw)
             if candidate['schema'] == 1 and candidate['source'] == source:
                 candidate['entries'] = normalize(candidate['entries'])
                 candidate['fetched_at'] = float(candidate['fetched_at'])
@@ -447,7 +451,7 @@ def add_app_menu(query=''):
         replace = False
         if existing:
             action = choose([dict(name='Back'), dict(name='Replace saved launcher', replace=True)],
-                            'Save app', header='Existing launcher: ' + shlex.join(existing['argv']))
+                            'Save app', header='Existing launcher: ' + clean(shlex.join(existing['argv']), 500))
             if not action or not action.get('replace'):
                 return
             replace = True
@@ -493,7 +497,7 @@ def uninstall_app(tool):
     command = registry.settings()['uninstall'].get(tool)
     if command:
         confirm = choose([dict(name='Back'), dict(name='Uninstall ' + app['name'], uninstall=True)],
-                         'Saved uninstall command', header=shlex.join(command))
+                         'Saved uninstall command', header=clean(shlex.join(command), 500))
         if confirm and confirm.get('uninstall'):
             subprocess.run(command, env=registry.environment(), check=True)
             registry.remove(tool)
@@ -502,7 +506,7 @@ def uninstall_app(tool):
     formula = registry.homebrew_formula(app)
     if not formula:
         action = choose([dict(name='Back'), dict(name='Remove from apps (keep installed files)', remove=True)],
-                        'Manual installation', header=app['name'] + '\n' + app['argv'][0] +
+                        'Manual installation', header=clean(app['name'], 160) + '\n' + clean(app['argv'][0], 500) +
                         '\nNo Homebrew ownership found. Use the original installer/package manager, or save its uninstall command from the app menu.')
         if action and action.get('remove'):
             registry.remove(tool)
@@ -671,7 +675,8 @@ def apps_menu(pick=False, origin=False):
                 actions.append(dict(name='Uninstall…', action='uninstall'))
                 actions.append(dict(name='Set uninstall command…', action='set-uninstall'))
             actions.append(dict(name='Back'))
-            action = choose(actions, 'App', header=selected['name'] + '\n' + shlex.join(selected['argv']))
+            action = choose(actions, 'App', header=clean(selected['name'], 160) + '\n' +
+                            clean(shlex.join(selected['argv']), 500))
             if not action or 'action' not in action:
                 continue
             if action['action'] == 'current' and origin:

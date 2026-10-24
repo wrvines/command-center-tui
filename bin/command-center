@@ -92,6 +92,17 @@ def directory(path):
     return value
 
 
+def selection_response(path):
+    """Confine the private app-selection response file to a temporary selection.json."""
+    if path is None:
+        return None
+    resolved = path.expanduser().resolve()
+    temporary = Path(tempfile.gettempdir()).resolve()
+    if path.name != "selection.json" or temporary not in resolved.parents:
+        raise ValueError("App selections are only written to a temporary selection.json file")
+    return resolved
+
+
 def zellij(theme="command-center"):
     executable = shutil.which("zellij", path=tool_env()["PATH"])
     if not executable:
@@ -210,10 +221,11 @@ def main():
         if args.action == "apps":
             if not sys.stdin.isatty() or not sys.stdout.isatty():
                 raise ValueError("Open apps from an interactive terminal")
-            target = cc_catalogs.floating_menu_target() if not args.return_selection and not args.pick else None
-            selection = cc_catalogs.apps_menu(pick=args.pick, origin=bool(args.return_selection or target))
-            if selection and args.return_selection:
-                with args.return_selection.open('x') as response:
+            response_file = selection_response(args.return_selection)
+            target = cc_catalogs.floating_menu_target() if not response_file and not args.pick else None
+            selection = cc_catalogs.apps_menu(pick=args.pick, origin=bool(response_file or target))
+            if selection and response_file:
+                with response_file.open('x') as response:
                     json.dump({'tool': app_id(selection)}, response)
             elif selection and target:
                 subprocess.run([str(ROOT / 'bin/command-center'), 'pane', app_id(selection),
