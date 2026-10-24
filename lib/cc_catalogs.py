@@ -17,7 +17,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-from cc import ROOT, paths, tool_env
+from cc import ROOT, paths, sanitize, tool_env
 from cc_apps import BUILTINS, PANEL_TOOLS, Registry
 
 SOURCES = {
@@ -40,12 +40,9 @@ FORMULA = re.compile(r'[a-z0-9][a-z0-9+_.@-]{0,199}\Z')
 
 
 def clean(value, limit=1200):
-    text = html.unescape(str(value or ''))
-    # Strip ANSI/OSC sequences before dropping remaining control and format chars.
-    text = re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', '', text)
-    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
-    text = ''.join(ch if unicodedata.category(ch)[0] != 'C' else ' ' for ch in text)
-    return ' '.join(text.split())[:limit]
+    # sanitize strips ANSI/OSC sequences and control/format characters; collapsing
+    # the remaining whitespace also keeps each menu row on one line.
+    return ' '.join(sanitize(html.unescape(str(value or ''))).split())[:limit]
 
 
 def safe_url(value):
@@ -188,7 +185,8 @@ def load_catalog(source, refresh=False, cache_dir=None, fetch=None):
     target = folder / (source + '.json')
     cached = None
     try:
-        raw = target.read_bytes()
+        with target.open('rb') as handle:
+            raw = handle.read(MAX_BYTES + 1)
         if len(raw) <= MAX_BYTES:
             candidate = json.loads(raw)
             if candidate['schema'] == 1 and candidate['source'] == source:

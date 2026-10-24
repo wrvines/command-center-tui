@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import pty
+import stat
 import subprocess
 import sys
 import tempfile
@@ -64,6 +65,55 @@ class InstallationTests(unittest.TestCase):
         self.assertNotEqual(self.manage("install").returncode, 0)
         self.assertEqual((self.ghostty / "config.ghostty").read_bytes(), self.original)
         self.assertEqual(binary.read_text(), "user-owned\n")
+
+    def test_missing_managed_config_keeps_manifest_and_original_backup(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        modern = self.ghostty / "config.ghostty"
+        installed = modern.read_bytes()
+        manifest = self.home / "Library/Application Support/command-center/install-manifest.json"
+        recorded = manifest.read_bytes()
+        modern.unlink()
+        result = self.manage("install")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Managed files have changed", result.stderr)
+        self.assertFalse(modern.exists())
+        self.assertEqual(manifest.read_bytes(), recorded)
+        entry = next(item for item in json.loads(recorded)["entries"] if item["kind"] == "file")
+        self.assertEqual(Path(entry["backup"]).read_bytes(), self.original)
+        modern.write_bytes(installed)
+        self.assertEqual(self.manage("uninstall").returncode, 0)
+        self.assertEqual(modern.read_bytes(), self.original)
+
+    def test_invalid_manifest_stops_before_changing_integrations(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        modern = self.ghostty / "config.ghostty"
+        installed = modern.read_bytes()
+        manifest = self.home / "Library/Application Support/command-center/install-manifest.json"
+        record = json.loads(manifest.read_text())
+        for change in (dict(installed_at="../elsewhere"), dict(entries=[None]),
+                       dict(entries=[dict(kind="file", path=str(modern), existed=True, mode=384,
+                                          original_sha256="abc", installed_sha256="def")])):
+            manifest.write_text(json.dumps(dict(record, **change)))
+            for action in ("install", "uninstall"):
+                with self.subTest(change=change, action=action):
+                    result = self.manage(action)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Invalid installation manifest", result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertEqual(modern.read_bytes(), installed)
+                    self.assertTrue((self.home / ".local/bin/command-center").is_symlink())
+
+    def test_launcher_only_install_accepts_paths_that_need_ghostty_escaping(self):
+        spec = importlib.util.spec_from_file_location("cc_manage_paths", ROOT / "scripts/manage.py")
+        manage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(manage)
+        manage.ROOT = Path(self.temp.name) / 'checkout#with"quotes'
+        data = self.home / "data"
+        manifest = data / "install-manifest.json"
+        manage.install(self.home, data, manifest, True, "darwin", no_ghostty=True)
+        with self.assertRaisesRegex(ValueError, "Checkout path"):
+            manage.install(self.home, data, manifest, True, "darwin", no_ghostty=False)
+        self.assertEqual((self.ghostty / "config.ghostty").read_bytes(), self.original)
 
 
 class WeatherTests(unittest.TestCase):
@@ -140,6 +190,16 @@ class WeatherTests(unittest.TestCase):
         result = self.weather()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Set weather_location", result.stdout)
+
+    def test_non_numeric_cache_lifetime_reports_an_error(self):
+        self.fake_curl("exit 99")
+        for value in ('null', '"invalid"', '1e400'):
+            with self.subTest(value=value):
+                self.prefs.write_text('{"weather_location":"84121", "weather_cache_seconds":' + value + '}')
+                result = self.weather()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("weather_cache_seconds must be a whole number", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
 
 
 class LauncherTests(unittest.TestCase):
@@ -460,6 +520,29 @@ sys.exit(7)
         second = subprocess.run(command, env=self.env, capture_output=True, text=True)
         self.assertNotEqual(second.returncode, 0)
         self.assertEqual(target.read_bytes(), content)
+
+    def test_in_place_launch_rejects_malformed_pane_metadata(self):
+        self.env['ZELLIJ'] = '1'
+        for payload, message in (('not json', 'invalid pane data'),
+                                 ('{"id": 3}', 'no longer available')):
+            with self.subTest(payload=payload):
+                self.env['CC_TEST_PANES'] = payload
+                result = self.launch('pane', 'shell', '--in-place', '3')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn('Traceback', result.stderr)
+
+    def test_newsboat_panel_creates_private_state_directory(self):
+        fake = self.base / 'tools/newsboat'
+        fake.write_text('#!/bin/sh\nexit 0\n')
+        fake.chmod(0o755)
+        data = self.base / 'panel data'
+        result = subprocess.run([str(ROOT / 'bin/cc-panel'), 'newsboat'],
+                                env=dict(self.env, CC_DATA=str(data), CC_CONFIG=str(self.base / 'config')),
+                                capture_output=True, text=True,
+                                preexec_fn=lambda: os.umask(0o022))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(stat.S_IMODE((data / 'newsboat').stat().st_mode), 0o700)
 
 
 class SelectionPathTests(unittest.TestCase):

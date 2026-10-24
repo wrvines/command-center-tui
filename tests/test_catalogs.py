@@ -14,6 +14,40 @@ import cc_catalogs as catalogs
 
 
 class CatalogTests(unittest.TestCase):
+    def test_oversized_cache_is_read_with_a_bound_and_replaced_from_source(self):
+        with tempfile.TemporaryDirectory(prefix='cc-cache-limit-') as temp:
+            target = Path(temp) / 'awesome-tuis.json'
+            target.write_bytes(b' ' * 2048)
+            original_open = Path.open
+            consumed = []
+
+            class TrackedReader:
+                def __enter__(self):
+                    self.handle = original_open(target, 'rb')
+                    return self
+
+                def read(self, size=-1):
+                    data = self.handle.read(size)
+                    consumed.append(len(data))
+                    return data
+
+                def __exit__(self, *args):
+                    self.handle.close()
+
+            def tracked_open(path, *args, **kwargs):
+                if path == target and (args == ('rb',) or kwargs.get('mode') == 'rb'):
+                    return TrackedReader()
+                return original_open(path, *args, **kwargs)
+
+            body = '- [btop](https://github.com/aristocratos/btop) - Resource monitor\n'
+            with patch.object(catalogs, 'MAX_BYTES', 1024), patch.object(Path, 'open', tracked_open):
+                result = catalogs.load_catalog('awesome-tuis', cache_dir=temp, fetch=lambda url: body)
+            self.assertEqual(result['entries'][0]['name'], 'btop')
+            self.assertFalse(result['stale'])
+            self.assertEqual(len(consumed), 1)
+            self.assertLessEqual(consumed[0], 1025)
+            self.assertEqual(json.loads(target.read_text())['schema'], 1)
+
     def test_floating_menu_finds_only_the_focused_workspace_pane_in_its_tab(self):
         panes = [dict(id=17, is_plugin=True, is_floating=False, tab_id=1),
                  dict(id=3, is_plugin=True, is_focused=True, tab_id=1),

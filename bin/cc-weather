@@ -3,7 +3,6 @@
 import argparse
 import datetime
 import hashlib
-import re
 import subprocess
 import sys
 import tempfile
@@ -13,17 +12,7 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-from cc import paths, preferences
-
-TERMINAL_CONTROL = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]")
-
-
-def sanitize(text):
-    """Forecast text is data only; drop terminal control sequences before display."""
-    text = TERMINAL_CONTROL.sub("", text.replace("\r\n", "\n"))
-    return "".join(character if character in "\n\t" or unicodedata.category(character)[0] != "C" else " "
-                   for character in text)
-
+from cc import paths, preferences, sanitize
 
 def has_control(text):
     return any(unicodedata.category(character) == "Cc" and character not in "\n\t" for character in text)
@@ -44,7 +33,10 @@ def main():
     if not location:
         print("Set weather_location in " + str(paths()[0] / "preferences.json"))
         return 1
-    ttl = int(settings.get("weather_cache_seconds", 1800))
+    try:
+        ttl = int(settings.get("weather_cache_seconds", 1800))
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError("weather_cache_seconds must be a whole number") from error
     if ttl < 0:
         raise ValueError("weather_cache_seconds must be nonnegative")
     _, _, cache_dir = paths()

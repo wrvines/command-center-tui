@@ -10,6 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def sanitize(value):
+    """Strip terminal escape sequences and control characters, keeping line breaks."""
+    text = re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', '', str(value).replace('\r\n', '\n'))
+    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
+    return ''.join(ch if unicodedata.category(ch)[0] != 'C' or ch in '\n\t' else ' ' for ch in text)
+
+
 def platform_paths(home=None, system=None, environ=None):
     home = Path(home or Path.home())
     system = system or sys.platform

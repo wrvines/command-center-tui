@@ -12,12 +12,19 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Install core tools
         shell: bash
+        env:
+          # Pinned installer revision and digest; update both deliberately.
+          HOMEBREW_INSTALL_COMMIT: 85d1a3fc80d8a63932f632aca8f787de11d14a64
+          HOMEBREW_INSTALL_SHA256: 5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148
         run: |
           if ! command -v brew >/dev/null; then
-            curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o /tmp/homebrew-install.sh
+            curl --proto '=https' --tlsv1.2 -fsSL \
+              "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh" \
+              -o /tmp/homebrew-install.sh
+            echo "${HOMEBREW_INSTALL_SHA256}  /tmp/homebrew-install.sh" | shasum -a 256 -c -
             NONINTERACTIVE=1 bash /tmp/homebrew-install.sh
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           fi
@@ -31,7 +38,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Validate PowerShell WSL entry points
         shell: pwsh
         run: ./scripts/test-wsl.ps1

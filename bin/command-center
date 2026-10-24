@@ -278,9 +278,14 @@ def main():
         if args.in_place is not None:
             result = subprocess.run(multiplexer + ['action', 'list-panes', '--json', '--state'],
                                     env=tool_env(), capture_output=True, text=True, check=True, timeout=5)
-            panes = json.loads(result.stdout)
-            if not any(pane['id'] == args.in_place and not pane.get('is_plugin') and
-                       not pane.get('is_suppressed') and not pane.get('exited') for pane in panes):
+            try:
+                panes = json.loads(result.stdout)
+            except ValueError as error:
+                raise ValueError('Zellij returned invalid pane data') from error
+            if not isinstance(panes, list) or not any(
+                    isinstance(pane, dict) and pane.get('id') == args.in_place and
+                    not pane.get('is_plugin') and not pane.get('is_suppressed') and not pane.get('exited')
+                    for pane in panes):
                 raise ValueError('The target pane is no longer available; reopen the app menu')
         registry = Registry()
         if args.tool not in TOOLS:
