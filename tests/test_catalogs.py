@@ -185,6 +185,14 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(result['coverage'], 'recent feed (full index unavailable)')
             self.assertEqual(result['entries'][0]['name'], 'btop')
 
+    def test_feed_xml_rejects_document_type_and_entity_declarations(self):
+        body = ('<?xml version="1.0"?>'
+                '<!DOCTYPE feed [<!ENTITY repeat "boom">]>'
+                '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>&repeat;</title>'
+                '<link href="https://example.com/tool"/></entry></feed>')
+        with self.assertRaisesRegex(ValueError, 'document type or entity'):
+            catalogs.parse_feed(body)
+
     def test_remote_control_sequences_urls_and_formula_options_are_not_trusted(self):
         body = json.dumps([
             {"name": "--help", "desc": "bad", "homepage": "https://example.com"},

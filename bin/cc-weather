@@ -13,13 +13,13 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-from cc import paths, preferences
+from cc import paths, preferences, sanitize
 
 
 def display(cache, location, stale=False):
     stamp = datetime.datetime.fromtimestamp(cache.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M %Z")
-    print(f"WEATHER · {location} · {'STALE · ' if stale else ''}updated {stamp}\n")
-    print(cache.read_text(), end="")
+    print(f"WEATHER · {sanitize(location)} · {'STALE · ' if stale else ''}updated {stamp}\n")
+    print(sanitize(cache.read_text()), end="")
 
 
 def main():
@@ -31,7 +31,10 @@ def main():
     if not location:
         print("Set weather_location in " + str(paths()[0] / "preferences.json"))
         return 1
-    ttl = int(settings.get("weather_cache_seconds", 1800))
+    try:
+        ttl = int(settings.get("weather_cache_seconds", 1800))
+    except (TypeError, ValueError) as error:
+        raise ValueError("weather_cache_seconds must be a whole number of seconds") from error
     if ttl < 0:
         raise ValueError("weather_cache_seconds must be nonnegative")
     _, _, cache_dir = paths()
@@ -52,6 +55,8 @@ def main():
                    or "sorry" in text.lower() or "error" in text.lower())
         if invalid:
             raise ValueError("Weather service did not return a forecast")
+        # Service text is data, not terminal instructions: keep the layout, drop escapes.
+        text = sanitize(text)
         with tempfile.NamedTemporaryFile(mode="w", dir=folder, delete=False) as handle:
             handle.write(text)
             temporary = Path(handle.name)

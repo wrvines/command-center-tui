@@ -49,7 +49,7 @@ case "$panel" in
         ;;
     newsboat)
         need newsboat
-        mkdir -p "$CC_DATA/newsboat"
+        (umask 077 && mkdir -p "$CC_DATA/newsboat")
         exec newsboat -C "$CC_CONFIG/newsboat.conf" -u "$CC_CONFIG/feeds" \
             -c "$CC_DATA/newsboat/cache.db" --queue-file "$CC_DATA/newsboat/queue" \
             --search-history-file "$CC_DATA/newsboat/search-history" \

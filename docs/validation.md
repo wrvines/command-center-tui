@@ -1,5 +1,18 @@
 # Validation record
 
+## Security hardening review — October 24, 2026
+
+A read-only review covered the launcher, panel helper, app registry, catalog fetcher, installer/rollback, and PowerShell/WSL bridge. No critical or high-severity issue was found: there is no privileged code, no shell-string execution, no listening service, and no credential material in the history. The fixes address the remaining low-severity and robustness findings.
+
+- Weather service text is now passed through the shared `cc.sanitize()` filter before caching and display, so remote ANSI/OSC sequences (clipboard writes, title changes) are never replayed to the terminal. Catalog text already used the same filter; `clean()` now shares it.
+- Atom feed parsing rejects document type and entity declarations before `ElementTree` sees the payload, removing the entity-expansion denial-of-service path.
+- `cc-panel newsboat` creates its state directory under `umask 077`, matching the compact-btop branch instead of inheriting the caller's umask.
+- A non-numeric `weather_cache_seconds` now reports `weather_cache_seconds must be a whole number of seconds` instead of a traceback, and malformed pane metadata in `pane --in-place` reports a normal error.
+- The ownership manifest is validated (types, timestamp format, and required backup/checksum fields) before any recorded path is trusted. An installation interrupted before creating its entries is now recovered on the next run; later edits still stop the install, and `--dry-run` never recovers.
+- CI pins `actions/checkout` by commit and downloads a commit-pinned Homebrew installer verified against a SHA-256 digest.
+
+Verification: `scripts/validate.sh` passed all 89 behavior tests, both platform/theme configurations, all six layouts, Ghostty configuration, and Newsboat configuration/feed parsing. New regressions cover escape filtering and cache contents, the XML declaration guard, the numeric preference error, malformed pane metadata, the private state directory, interrupted-install recovery, and refusal to treat later edits as an interruption. These are automated and native-configuration checks; no live session, installation, or package was changed during the review.
+
 ## Source update command — October 22, 2026
 
 `command-center update` passed seven tests against disposable local bare Git remotes: fast-forward through an installed symlink from an unrelated directory (checkout path with spaces, active Zellij environment, private settings preserved), already-current checkout, tracked edits/untracked files, divergent history, detached HEAD/missing upstream, unreachable remote, and a source copy nested in another repository. No pull was performed against the development checkout or GitHub.

@@ -2,6 +2,7 @@
 import json
 import os
 import pty
+import stat
 import subprocess
 import sys
 import tempfile
@@ -63,6 +64,27 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual((self.ghostty / "config.ghostty").read_bytes(), self.original)
         self.assertEqual(binary.read_text(), "user-owned\n")
 
+    def test_interrupted_install_recovers_without_duplicating_entries(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        (self.home / ".local/bin/ccenter").unlink()
+        result = self.manage("install")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("interrupted", result.stdout)
+        self.assertTrue((self.home / ".local/bin/ccenter").is_symlink())
+        modern = self.ghostty / "config.ghostty"
+        self.assertEqual(modern.read_text().count("# BEGIN command-center"), 1)
+        self.assertEqual((self.ghostty / "config").read_bytes(), b"# legacy\n")
+
+    def test_install_does_not_treat_later_edits_as_an_interruption(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        modern = self.ghostty / "config.ghostty"
+        edited = modern.read_bytes() + b"font-size = 18\n"
+        modern.write_bytes(edited)
+        result = self.manage("install")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Managed files have changed", result.stderr)
+        self.assertEqual(modern.read_bytes(), edited)
+
 
 class WeatherTests(unittest.TestCase):
     def setUp(self):
@@ -110,6 +132,23 @@ class WeatherTests(unittest.TestCase):
         result = self.weather()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Set weather_location", result.stdout)
+
+    def test_non_numeric_cache_lifetime_reports_an_error(self):
+        self.prefs.write_text('{"weather_location":"84121", "weather_cache_seconds":null}')
+        self.fake_curl("exit 99")
+        result = self.weather()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("weather_cache_seconds must be a whole number", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_service_escape_sequences_are_not_replayed_to_the_terminal(self):
+        self.fake_curl("printf 'Sunny\\033]52;c;cGF5bG9hZA==\\007 20 C\\n'")
+        result = self.weather()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Sunny", result.stdout)
+        self.assertNotIn("\x1b", result.stdout)
+        cached = next((self.base / "cache/weather").glob("*.txt"))
+        self.assertNotIn("\x1b", cached.read_text())
 
 
 class LauncherTests(unittest.TestCase):
@@ -260,6 +299,29 @@ print(selected)
         result = self.launch('pane', 'shell', '--in-place', '99')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any('new-pane' in command for command in self.calls()))
+
+    def test_in_place_launch_rejects_malformed_pane_metadata(self):
+        self.env['ZELLIJ'] = '1'
+        for payload, message in (('not json', 'invalid pane data'),
+                                 ('{"id": 3}', 'no longer available')):
+            with self.subTest(payload=payload):
+                self.env['CC_TEST_PANES'] = payload
+                result = self.launch('pane', 'shell', '--in-place', '3')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn('Traceback', result.stderr)
+
+    def test_newsboat_panel_creates_private_state_directory(self):
+        fake = self.base / 'tools/newsboat'
+        fake.write_text('#!/bin/sh\nexit 0\n')
+        fake.chmod(0o755)
+        data = self.base / 'panel data'
+        result = subprocess.run([str(ROOT / 'bin/cc-panel'), 'newsboat'],
+                                env=dict(self.env, CC_DATA=str(data), CC_CONFIG=str(self.base / 'config')),
+                                capture_output=True, text=True,
+                                preexec_fn=lambda: os.umask(0o022))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(stat.S_IMODE((data / 'newsboat').stat().st_mode), 0o700)
 
     def test_canceled_apps_menu_returns_without_launching_an_app(self):
         self.env['ZELLIJ'] = '1'
