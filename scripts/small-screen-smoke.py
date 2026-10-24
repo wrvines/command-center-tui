@@ -45,8 +45,12 @@ def terminal(command, env, rows, columns):
                     output.extend(os.read(master, 65536))
                 except OSError:
                     break
-        if process.poll() is None:
-            raise RuntimeError("Tool did not exit: " + output.decode(errors="replace")[-1500:])
+        try:
+            # EOF/EIO can precede child exit (for example during Newsboat cleanup).
+            # Reap it within the remaining exit deadline before reporting failure.
+            process.wait(timeout=max(0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError("Tool did not exit: " + output.decode(errors="replace")[-1500:]) from error
     finally:
         if process.poll() is None:
             process.kill()

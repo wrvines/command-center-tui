@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -39,11 +40,40 @@ def matches(entry):
             and checksum(path.read_bytes()) == entry["installed_sha256"])
 
 
+def load_manifest(manifest):
+    """Read and validate the ownership record before trusting any recorded path."""
+    try:
+        record = json.loads(manifest.read_text())
+    except (OSError, ValueError) as error:
+        raise ValueError("Cannot read installation manifest " + str(manifest) + ": " + str(error)) from error
+    if (not isinstance(record, dict) or not isinstance(record.get("root"), str)
+            or not isinstance(record.get("entries"), list)
+            or not isinstance(record.get("installed_at"), str)
+            or not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9]{6}", record["installed_at"])):
+        raise ValueError("Invalid installation manifest: " + str(manifest))
+    for entry in record["entries"]:
+        if (not isinstance(entry, dict) or entry.get("kind") not in ("link", "file")
+                or not isinstance(entry.get("path"), str)):
+            raise ValueError("Invalid installation manifest entry: " + str(manifest))
+        if entry["kind"] == "link":
+            if not isinstance(entry.get("target"), str):
+                raise ValueError("Invalid installation manifest link: " + str(manifest))
+        else:
+            if not isinstance(entry.get("existed"), bool) or not isinstance(entry.get("mode"), int):
+                raise ValueError("Invalid installation manifest entry: " + str(manifest))
+            for key in ("original_sha256", "installed_sha256"):
+                if not isinstance(entry.get(key), str):
+                    raise ValueError("Invalid installation manifest entry: " + str(manifest))
+            if entry["existed"] and not isinstance(entry.get("backup"), str):
+                raise ValueError("Invalid installation manifest backup: " + str(manifest))
+    return record
+
+
 def install(home, data, manifest, dry_run, system=None, no_ghostty=False, config=None):
     system = system or sys.platform
     config = config or platform_paths(home, system, {})[0]
     if manifest.exists():
-        record = json.loads(manifest.read_text())
+        record = load_manifest(manifest)
         if record["root"] != str(ROOT):
             raise ValueError("An installation from another checkout owns these integrations")
         if not all(matches(entry) for entry in record["entries"]):
@@ -60,7 +90,12 @@ def install(home, data, manifest, dry_run, system=None, no_ghostty=False, config
     original = modern.read_bytes() if not no_ghostty and modern.exists() else b""
     if BEGIN.encode() in original or END.encode() in original:
         raise ValueError("Found an existing managed block without a manifest; inspect it before installing")
-    block = (BEGIN + "\nconfig-file = " + str(ROOT / "config/ghostty/command-center.ghostty") + "\n" + END + "\n").encode()
+    include = str(ROOT / "config/ghostty/command-center.ghostty")
+    # The include line is inserted verbatim; a quote, comment, or newline in the
+    # checkout path would rewrite or truncate the user's Ghostty configuration.
+    if not no_ghostty and any(character == '"' or character == "#" or ord(character) < 32 for character in include):
+        raise ValueError("Checkout path cannot be written into Ghostty configuration: " + include)
+    block = (BEGIN + "\nconfig-file = " + include + "\n" + END + "\n").encode()
     updated = original + (b"\n" if original and not original.endswith(b"\n") else b"") + block
     entries = []
     for name in ("command-center", "ccenter"):
@@ -139,7 +174,7 @@ def uninstall(manifest, dry_run):
     if not manifest.exists():
         print("No managed installation found.")
         return
-    record = json.loads(manifest.read_text())
+    record = load_manifest(manifest)
     if record["root"] != str(ROOT):
         raise ValueError("Run uninstall from the checkout named in the installation manifest")
     # Validate all entries and backups before making even the first change.

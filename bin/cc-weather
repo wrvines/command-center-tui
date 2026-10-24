@@ -3,23 +3,25 @@
 import argparse
 import datetime
 import hashlib
-import json
-import os
 import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-from cc import paths, preferences
+from cc import paths, preferences, sanitize
+
+def has_control(text):
+    return any(unicodedata.category(character) == "Cc" and character not in "\n\t" for character in text)
 
 
 def display(cache, location, stale=False):
     stamp = datetime.datetime.fromtimestamp(cache.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M %Z")
-    print(f"WEATHER · {location} · {'STALE · ' if stale else ''}updated {stamp}\n")
-    print(cache.read_text(), end="")
+    print(f"WEATHER · {' '.join(sanitize(location).split())} · {'STALE · ' if stale else ''}updated {stamp}\n")
+    print(sanitize(cache.read_text()), end="")
 
 
 def main():
@@ -31,7 +33,10 @@ def main():
     if not location:
         print("Set weather_location in " + str(paths()[0] / "preferences.json"))
         return 1
-    ttl = int(settings.get("weather_cache_seconds", 1800))
+    try:
+        ttl = int(settings.get("weather_cache_seconds", 1800))
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError("weather_cache_seconds must be a whole number") from error
     if ttl < 0:
         raise ValueError("weather_cache_seconds must be nonnegative")
     _, _, cache_dir = paths()
@@ -43,17 +48,18 @@ def main():
         return 0
     url = "https://wttr.in/" + urllib.parse.quote(location, safe="") + "?1&T&Q&lang=en"
     try:
-        response = subprocess.run(["curl", "--fail", "--silent", "--show-error", "--connect-timeout", "5",
-                                   "--max-time", "15", "--proto", "=https", url],
+        response = subprocess.run(["curl", "--disable", "--fail", "--silent", "--show-error", "--connect-timeout", "5",
+                                   "--max-time", "15", "--proto", "=https", "--proto-redir", "=https",
+                                   "--max-filesize", "200000", url],
                                   capture_output=True, text=True, timeout=17)
-        text = response.stdout
-        invalid = (response.returncode != 0 or not text.strip() or len(text) > 100000
+        text = response.stdout.replace("\r\n", "\n")
+        invalid = (response.returncode != 0 or not text.strip() or len(text) > 100000 or has_control(text)
                    or "<html" in text.lower() or "unknown location" in text.lower()
                    or "sorry" in text.lower() or "error" in text.lower())
         if invalid:
             raise ValueError("Weather service did not return a forecast")
         with tempfile.NamedTemporaryFile(mode="w", dir=folder, delete=False) as handle:
-            handle.write(text)
+            handle.write(sanitize(text))
             temporary = Path(handle.name)
         temporary.replace(cache)
         display(cache, location)

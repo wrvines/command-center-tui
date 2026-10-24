@@ -17,7 +17,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-from cc import ROOT, paths, tool_env
+from cc import ROOT, paths, sanitize, tool_env
 from cc_apps import BUILTINS, PANEL_TOOLS, Registry
 
 SOURCES = {
@@ -40,12 +40,9 @@ FORMULA = re.compile(r'[a-z0-9][a-z0-9+_.@-]{0,199}\Z')
 
 
 def clean(value, limit=1200):
-    text = html.unescape(str(value or ''))
-    # Strip ANSI/OSC sequences before dropping remaining control and format chars.
-    text = re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', '', text)
-    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
-    text = ''.join(ch if unicodedata.category(ch)[0] != 'C' else ' ' for ch in text)
-    return ' '.join(text.split())[:limit]
+    # sanitize strips ANSI/OSC sequences and control/format characters; collapsing
+    # the remaining whitespace also keeps each menu row on one line.
+    return ' '.join(sanitize(html.unescape(str(value or ''))).split())[:limit]
 
 
 def safe_url(value):
@@ -138,6 +135,9 @@ def parse_catalog(source, body):
 
 
 def parse_feed(body):
+    # Text from the network is data; a document type would redefine the language.
+    if re.search(r'<!\s*(?:DOCTYPE|ENTITY)', body, re.IGNORECASE):
+        raise ValueError('Feed document type declarations are not accepted')
     root = ET.fromstring(body)
     ns = '{http://www.w3.org/2005/Atom}'
     rows = []
@@ -165,7 +165,8 @@ def normalize(rows):
 def fetch_text(url):
     with tempfile.TemporaryDirectory(prefix='cc-catalog-download-') as temp:
         target = Path(temp) / 'index'
-        result = subprocess.run(['curl', '--fail', '--silent', '--show-error', '--location',
+        # --disable must be the first argument: ignore any user ~/.curlrc defaults.
+        result = subprocess.run(['curl', '--disable', '--fail', '--silent', '--show-error', '--location',
                                  '--proto', '=https', '--proto-redir', '=https',
                                  '--connect-timeout', '8', '--max-time', '45', '--max-filesize', str(MAX_BYTES),
                                  '--output', str(target), url], env=tool_env(), capture_output=True,
@@ -184,8 +185,10 @@ def load_catalog(source, refresh=False, cache_dir=None, fetch=None):
     target = folder / (source + '.json')
     cached = None
     try:
-        if target.stat().st_size <= MAX_BYTES:
-            candidate = json.loads(target.read_text())
+        with target.open('rb') as handle:
+            raw = handle.read(MAX_BYTES + 1)
+        if len(raw) <= MAX_BYTES:
+            candidate = json.loads(raw)
             if candidate['schema'] == 1 and candidate['source'] == source:
                 candidate['entries'] = normalize(candidate['entries'])
                 candidate['fetched_at'] = float(candidate['fetched_at'])
@@ -446,7 +449,7 @@ def add_app_menu(query=''):
         replace = False
         if existing:
             action = choose([dict(name='Back'), dict(name='Replace saved launcher', replace=True)],
-                            'Save app', header='Existing launcher: ' + shlex.join(existing['argv']))
+                            'Save app', header='Existing launcher: ' + clean(shlex.join(existing['argv']), 500))
             if not action or not action.get('replace'):
                 return
             replace = True
@@ -492,7 +495,7 @@ def uninstall_app(tool):
     command = registry.settings()['uninstall'].get(tool)
     if command:
         confirm = choose([dict(name='Back'), dict(name='Uninstall ' + app['name'], uninstall=True)],
-                         'Saved uninstall command', header=shlex.join(command))
+                         'Saved uninstall command', header=clean(shlex.join(command), 500))
         if confirm and confirm.get('uninstall'):
             subprocess.run(command, env=registry.environment(), check=True)
             registry.remove(tool)
@@ -501,7 +504,7 @@ def uninstall_app(tool):
     formula = registry.homebrew_formula(app)
     if not formula:
         action = choose([dict(name='Back'), dict(name='Remove from apps (keep installed files)', remove=True)],
-                        'Manual installation', header=app['name'] + '\n' + app['argv'][0] +
+                        'Manual installation', header=clean(app['name'], 160) + '\n' + clean(app['argv'][0], 500) +
                         '\nNo Homebrew ownership found. Use the original installer/package manager, or save its uninstall command from the app menu.')
         if action and action.get('remove'):
             registry.remove(tool)
@@ -670,7 +673,8 @@ def apps_menu(pick=False, origin=False):
                 actions.append(dict(name='Uninstall…', action='uninstall'))
                 actions.append(dict(name='Set uninstall command…', action='set-uninstall'))
             actions.append(dict(name='Back'))
-            action = choose(actions, 'App', header=selected['name'] + '\n' + shlex.join(selected['argv']))
+            action = choose(actions, 'App', header=clean(selected['name'], 160) + '\n' +
+                            clean(shlex.join(selected['argv']), 500))
             if not action or 'action' not in action:
                 continue
             if action['action'] == 'current' and origin:

@@ -1,7 +1,10 @@
 """Behavior checks for ownership, persistence decisions, and network failure handling."""
+import importlib.machinery
+import importlib.util
 import json
 import os
 import pty
+import stat
 import subprocess
 import sys
 import tempfile
@@ -63,6 +66,55 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual((self.ghostty / "config.ghostty").read_bytes(), self.original)
         self.assertEqual(binary.read_text(), "user-owned\n")
 
+    def test_missing_managed_config_keeps_manifest_and_original_backup(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        modern = self.ghostty / "config.ghostty"
+        installed = modern.read_bytes()
+        manifest = self.home / "Library/Application Support/command-center/install-manifest.json"
+        recorded = manifest.read_bytes()
+        modern.unlink()
+        result = self.manage("install")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Managed files have changed", result.stderr)
+        self.assertFalse(modern.exists())
+        self.assertEqual(manifest.read_bytes(), recorded)
+        entry = next(item for item in json.loads(recorded)["entries"] if item["kind"] == "file")
+        self.assertEqual(Path(entry["backup"]).read_bytes(), self.original)
+        modern.write_bytes(installed)
+        self.assertEqual(self.manage("uninstall").returncode, 0)
+        self.assertEqual(modern.read_bytes(), self.original)
+
+    def test_invalid_manifest_stops_before_changing_integrations(self):
+        self.assertEqual(self.manage("install").returncode, 0)
+        modern = self.ghostty / "config.ghostty"
+        installed = modern.read_bytes()
+        manifest = self.home / "Library/Application Support/command-center/install-manifest.json"
+        record = json.loads(manifest.read_text())
+        for change in (dict(installed_at="../elsewhere"), dict(entries=[None]),
+                       dict(entries=[dict(kind="file", path=str(modern), existed=True, mode=384,
+                                          original_sha256="abc", installed_sha256="def")])):
+            manifest.write_text(json.dumps(dict(record, **change)))
+            for action in ("install", "uninstall"):
+                with self.subTest(change=change, action=action):
+                    result = self.manage(action)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Invalid installation manifest", result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertEqual(modern.read_bytes(), installed)
+                    self.assertTrue((self.home / ".local/bin/command-center").is_symlink())
+
+    def test_launcher_only_install_accepts_paths_that_need_ghostty_escaping(self):
+        spec = importlib.util.spec_from_file_location("cc_manage_paths", ROOT / "scripts/manage.py")
+        manage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(manage)
+        manage.ROOT = Path(self.temp.name) / 'checkout#with"quotes'
+        data = self.home / "data"
+        manifest = data / "install-manifest.json"
+        manage.install(self.home, data, manifest, True, "darwin", no_ghostty=True)
+        with self.assertRaisesRegex(ValueError, "Checkout path"):
+            manage.install(self.home, data, manifest, True, "darwin", no_ghostty=False)
+        self.assertEqual((self.ghostty / "config.ghostty").read_bytes(), self.original)
+
 
 class WeatherTests(unittest.TestCase):
     def setUp(self):
@@ -104,12 +156,50 @@ class WeatherTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(list((self.base / "cache/weather").glob("*.txt")))
 
+    def test_control_sequences_are_refused_and_cached_forecasts_display_as_data(self):
+        self.fake_curl("printf 'Sunny, 20 C\\n'")
+        self.assertEqual(self.weather().returncode, 0)
+        cache = next((self.base / "cache/weather").glob("*.txt"))
+        self.assertEqual(cache.read_text(), "Sunny, 20 C\n")
+        self.fake_curl("printf 'Safe\\r25 C\\033]52;c;AAA=\\007\\033[31mred\\n'")
+        stale = self.weather("--refresh")
+        self.assertEqual(stale.returncode, 0, stale.stderr)
+        self.assertIn("STALE", stale.stdout)
+        self.assertNotIn("\x1b", stale.stdout)
+        self.assertEqual(cache.read_text(), "Sunny, 20 C\n")
+        cache.write_text("Sunny\n\x1b]2;spoof\x07bad\x1b[0m\n")
+        displayed = self.weather()
+        self.assertEqual(displayed.returncode, 0)
+        self.assertNotIn("\x1b", displayed.stdout)
+        self.assertNotIn("\r", displayed.stdout)
+
+    def test_requests_pin_https_ignore_user_curlrc_and_limit_size(self):
+        arguments = self.base / "curl-arguments.txt"
+        self.fake_curl('echo "$@" > "' + str(arguments) + '"\nprintf \'Sunny, 20 C\\n\'')
+        result = self.weather()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        argv = arguments.read_text().split()
+        self.assertEqual(argv[0], "--disable")
+        for flag, value in (("--proto", "=https"), ("--proto-redir", "=https"),
+                            ("--max-filesize", "200000"), ("--connect-timeout", "5"), ("--max-time", "15")):
+            self.assertEqual(argv[argv.index(flag) + 1], value, argv)
+
     def test_empty_location_does_not_fetch(self):
         self.prefs.write_text('{"weather_location":""}')
         self.fake_curl("exit 99")
         result = self.weather()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Set weather_location", result.stdout)
+
+    def test_non_numeric_cache_lifetime_reports_an_error(self):
+        self.fake_curl("exit 99")
+        for value in ('null', '"invalid"', '1e400'):
+            with self.subTest(value=value):
+                self.prefs.write_text('{"weather_location":"84121", "weather_cache_seconds":' + value + '}')
+                result = self.weather()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("weather_cache_seconds must be a whole number", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
 
 
 class LauncherTests(unittest.TestCase):
@@ -430,6 +520,45 @@ sys.exit(7)
         second = subprocess.run(command, env=self.env, capture_output=True, text=True)
         self.assertNotEqual(second.returncode, 0)
         self.assertEqual(target.read_bytes(), content)
+
+    def test_in_place_launch_rejects_malformed_pane_metadata(self):
+        self.env['ZELLIJ'] = '1'
+        for payload, message in (('not json', 'invalid pane data'),
+                                 ('{"id": 3}', 'no longer available')):
+            with self.subTest(payload=payload):
+                self.env['CC_TEST_PANES'] = payload
+                result = self.launch('pane', 'shell', '--in-place', '3')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn('Traceback', result.stderr)
+
+    def test_newsboat_panel_creates_private_state_directory(self):
+        fake = self.base / 'tools/newsboat'
+        fake.write_text('#!/bin/sh\nexit 0\n')
+        fake.chmod(0o755)
+        data = self.base / 'panel data'
+        result = subprocess.run([str(ROOT / 'bin/cc-panel'), 'newsboat'],
+                                env=dict(self.env, CC_DATA=str(data), CC_CONFIG=str(self.base / 'config')),
+                                capture_output=True, text=True,
+                                preexec_fn=lambda: os.umask(0o022))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(stat.S_IMODE((data / 'newsboat').stat().st_mode), 0o700)
+
+
+class SelectionPathTests(unittest.TestCase):
+    def test_return_selection_is_confined_to_a_temporary_selection_file(self):
+        launcher = ROOT / "bin/command-center"
+        loader = importlib.machinery.SourceFileLoader("command_center", str(launcher))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        command_center = importlib.util.module_from_spec(spec)
+        loader.exec_module(command_center)
+        good = Path(tempfile.gettempdir()) / "cc-app-selection-test" / "selection.json"
+        self.assertEqual(command_center.selection_response(good), good.resolve())
+        self.assertIsNone(command_center.selection_response(None))
+        for bad in (good.parent / "other.json", Path.home() / "selection.json"):
+            with self.subTest(path=bad):
+                with self.assertRaisesRegex(ValueError, "temporary"):
+                    command_center.selection_response(bad)
 
 
 if __name__ == "__main__":

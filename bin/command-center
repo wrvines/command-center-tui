@@ -92,6 +92,17 @@ def directory(path):
     return value
 
 
+def selection_response(path):
+    """Confine the private app-selection response file to a temporary selection.json."""
+    if path is None:
+        return None
+    resolved = path.expanduser().resolve()
+    temporary = Path(tempfile.gettempdir()).resolve()
+    if path.name != "selection.json" or temporary not in resolved.parents:
+        raise ValueError("App selections are only written to a temporary selection.json file")
+    return resolved
+
+
 def zellij(theme="command-center"):
     executable = shutil.which("zellij", path=tool_env()["PATH"])
     if not executable:
@@ -210,10 +221,11 @@ def main():
         if args.action == "apps":
             if not sys.stdin.isatty() or not sys.stdout.isatty():
                 raise ValueError("Open apps from an interactive terminal")
-            target = cc_catalogs.floating_menu_target() if not args.return_selection and not args.pick else None
-            selection = cc_catalogs.apps_menu(pick=args.pick, origin=bool(args.return_selection or target))
-            if selection and args.return_selection:
-                with args.return_selection.open('x') as response:
+            response_file = selection_response(args.return_selection)
+            target = cc_catalogs.floating_menu_target() if not response_file and not args.pick else None
+            selection = cc_catalogs.apps_menu(pick=args.pick, origin=bool(response_file or target))
+            if selection and response_file:
+                with response_file.open('x') as response:
                     json.dump({'tool': app_id(selection)}, response)
             elif selection and target:
                 subprocess.run([str(ROOT / 'bin/command-center'), 'pane', app_id(selection),
@@ -266,9 +278,14 @@ def main():
         if args.in_place is not None:
             result = subprocess.run(multiplexer + ['action', 'list-panes', '--json', '--state'],
                                     env=tool_env(), capture_output=True, text=True, check=True, timeout=5)
-            panes = json.loads(result.stdout)
-            if not any(pane['id'] == args.in_place and not pane.get('is_plugin') and
-                       not pane.get('is_suppressed') and not pane.get('exited') for pane in panes):
+            try:
+                panes = json.loads(result.stdout)
+            except ValueError as error:
+                raise ValueError('Zellij returned invalid pane data') from error
+            if not isinstance(panes, list) or not any(
+                    isinstance(pane, dict) and pane.get('id') == args.in_place and
+                    not pane.get('is_plugin') and not pane.get('is_suppressed') and not pane.get('exited')
+                    for pane in panes):
                 raise ValueError('The target pane is no longer available; reopen the app menu')
         registry = Registry()
         if args.tool not in TOOLS:

@@ -1,6 +1,7 @@
 """Platform paths, ownership, and dependency planning without OS/package mutations."""
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,18 @@ class PortabilityTests(unittest.TestCase):
         self.assertNotIn("pbcopy", text)
         self.assertNotIn("/bin/zsh", text)
         self.assertIn('default_mode "locked"', text)
+
+    def test_layout_strings_escape_quotes_and_preserve_unicode_paths(self):
+        project = Path('/tmp/prøject "quoted"\\dir')
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"COMMAND_CENTER_HOME": temp}):
+            rendered = cc.render_layout("dev", project)
+        self.assertIn(cc.kdl_string(project), rendered)
+        self.assertIn('"', rendered)
+        self.assertNotIn("\\u00f8", rendered)
+        self.assertIn("prøject", rendered)
+        self.assertEqual(cc.kdl_string('a\\b"c'), '"a\\\\b\\"c"')
+        self.assertEqual(cc.kdl_string("tab\tline\n"), '"tab\\tline\\n"')
+        self.assertEqual(cc.kdl_string("\x00\x01"), '"\\u{0}\\u{1}"')
 
     def test_missing_homebrew_explains_manual_dependency_option(self):
         with patch.object(setup.shutil, "which", return_value=None):

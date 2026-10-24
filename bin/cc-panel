@@ -12,6 +12,8 @@ panel_shell="${SHELL:-/bin/bash}"
 [[ -x "$panel_shell" ]] || panel_shell=/bin/bash
 panel="${1:-shell}"
 shift || true
+# Pane titles are terminal output; never send control characters from a tool name.
+panel_label="${panel//[[:cntrl:]]/}"
 fallback() {
     printf '\n%s\n\n' "$1"
     exec "$CC_ROOT/bin/cc-shell"
@@ -20,7 +22,7 @@ need() {
     command -v "$1" >/dev/null 2>&1 || fallback "$1 is not installed. You can use this shell instead."
 }
 if [[ -n ${ZELLIJ:-} && -t 1 ]]; then
-    printf '\033]2;%s\007' "$panel"
+    printf '\033]2;%s\007' "${panel_label:0:80}"
 fi
 case "$panel" in
     apps)
@@ -49,7 +51,7 @@ case "$panel" in
         ;;
     newsboat)
         need newsboat
-        mkdir -p "$CC_DATA/newsboat"
+        (umask 077 && mkdir -p "$CC_DATA/newsboat")
         exec newsboat -C "$CC_CONFIG/newsboat.conf" -u "$CC_CONFIG/feeds" \
             -c "$CC_DATA/newsboat/cache.db" --queue-file "$CC_DATA/newsboat/queue" \
             --search-history-file "$CC_DATA/newsboat/search-history" \
@@ -80,5 +82,5 @@ case "$panel" in
         printf '\nSERVICES — inspect or run your project services here.\nExamples: brew services list; docker ps; lsof -iTCP -sTCP:LISTEN -n -P\n\n'
         exec "$CC_ROOT/bin/cc-shell"
         ;;
-    *) fallback "Unknown panel: $panel" ;;
+    *) fallback "Unknown panel: ${panel_label:0:80}" ;;
 esac

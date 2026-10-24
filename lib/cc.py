@@ -4,9 +4,17 @@ import os
 import re
 import shutil
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def sanitize(value):
+    """Strip terminal escape sequences and control characters, keeping line breaks."""
+    text = re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', '', str(value).replace('\r\n', '\n'))
+    text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
+    return ''.join(ch if unicodedata.category(ch)[0] != 'C' or ch in '\n\t' else ' ' for ch in text)
 
 
 def platform_paths(home=None, system=None, environ=None):
@@ -62,13 +70,32 @@ def seed():
     return config, data, cache
 
 
+def kdl_string(value):
+    """Quote a value as a KDL string. JSON-style \\uXXXX escapes are not valid KDL."""
+    quoted = []
+    for character in str(value):
+        if character in '\\"':
+            quoted.append("\\" + character)
+        elif character == "\n":
+            quoted.append("\\n")
+        elif character == "\r":
+            quoted.append("\\r")
+        elif character == "\t":
+            quoted.append("\\t")
+        elif unicodedata.category(character)[0] == "C":
+            quoted.append("\\u{" + format(ord(character), "x") + "}")
+        else:
+            quoted.append(character)
+    return '"' + "".join(quoted) + '"'
+
+
 def zellij_config_content(system=None, theme="command-center"):
     if theme not in ("command-center", "oh-my-pi"):
         raise ValueError("Unknown command-center theme: " + theme)
     source = ROOT / "config/zellij/config.kdl"
     content = source.read_text().replace('default_shell "/bin/zsh"',
-                                         'default_shell ' + json.dumps(str(ROOT / "bin/cc-shell")))
-    content = content.replace('"{{CC_LAUNCHER}}"', json.dumps(str(ROOT / "bin/command-center")))
+                                         'default_shell ' + kdl_string(ROOT / "bin/cc-shell"))
+    content = content.replace('"{{CC_LAUNCHER}}"', kdl_string(ROOT / "bin/command-center"))
     if theme == "oh-my-pi":
         content = content.replace('theme "command-center"', 'theme "oh-my-pi"')
         content += "\n" + (ROOT / "config/zellij/themes/oh-my-pi.kdl").read_text()
@@ -128,7 +155,7 @@ def render_layout(name, project):
     content = layout_source(name).read_text()
     # Replace complete quoted placeholders with properly escaped KDL strings.
     for key, value in (("CC_PANEL", ROOT / "bin/cc-panel"), ("PROJECT", project)):
-        content = content.replace('"{{' + key + '}}"', json.dumps(str(value)))
+        content = content.replace('"{{' + key + '}}"', kdl_string(value))
     if "{{" in content:
         raise ValueError("Unresolved layout placeholder")
     return content

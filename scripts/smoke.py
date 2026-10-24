@@ -28,7 +28,12 @@ def main():
         CONFIG.write_text(zellij_config_content())
         project = base / 'project with spaces and "quotes"'
         project.mkdir()
-        env = dict(os.environ, COMMAND_CENTER_HOME=str(base / "state"), TERM="xterm-256color")
+        home = base / "home"
+        home.mkdir()
+        # The default-title checks must not inherit a runner/user's title-setting
+        # prompt. Startup-file preservation has separate focused behavior tests.
+        env = dict(os.environ, HOME=str(home), COMMAND_CENTER_HOME=str(base / "state"), TERM="xterm-256color")
+        env.pop("ZDOTDIR", None)
         env.pop("ZELLIJ", None)
         env.pop("TMUX", None)
         children = []
@@ -91,8 +96,15 @@ def main():
 
         def wait_for(test, description):
             for _ in range(30):
-                if test():
-                    return
+                try:
+                    if test():
+                        return
+                except json.JSONDecodeError as error:
+                    # Zellij can briefly return no metadata during pane replacement.
+                    # Retry an empty response within this wait's existing limit;
+                    # malformed nonempty JSON must still fail immediately.
+                    if error.doc.strip():
+                        raise
                 time.sleep(0.1)
             raise RuntimeError("Failed: " + description + "\n" + action("dump-screen"))
 

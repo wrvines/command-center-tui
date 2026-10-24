@@ -42,6 +42,8 @@ class Registry:
         self.system = system or sys.platform
 
     def settings(self):
+        if self.file.is_symlink():
+            raise ValueError('Refusing to read a symlinked app registry: ' + str(self.file))
         try:
             if self.file.stat().st_size > 1024 * 1024:
                 raise ValueError('registry exceeds 1 MiB')
